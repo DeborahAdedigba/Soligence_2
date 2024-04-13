@@ -27,6 +27,7 @@ from sklearn.metrics import mean_squared_error
 
 # Load cryptocurrency price data
 data = pd.read_csv('Cleaned_combined_crypto_data.csv')
+selected_data = pd.read_csv("Selected_coins.csv", index_col='Date')
 
 def home_section():
     st.title("SOLiGence")
@@ -580,15 +581,6 @@ def plot_candlestick_chart(data, coin='BTC-GBP', period='D'):
 
 
 
-
-
-
-
-
-
-
-
-
 def visualize_market_state(data):
     """
     Predicts the market state (up or down) for a group of chosen cryptocurrencies.
@@ -727,141 +719,39 @@ def get_top_crypto_news(crypto, num_stories=5):
 
 
         
+# # Load and preprocess data
+# def load_selected_data():
+#         try:
+#             selected_data = pd.read_csv("Selected_coins.csv", index_col='Date')
+#             return selected_data
+#         except FileNotFoundError:
+#             st.error("Failed to load selected data. File not found.")
+#             return None
 
+# selected_data = load_selected_data()
 
-
-# def evaluate_models_BTC(selected_data):
-#     # Making a copy of the slice to ensure it's a separate object
-#     selected_data = pd.DataFrame(selected_data)
-
-#     for lag in range(1, 4):  # Adding lagged features for 1 to 3 days
-#         selected_data.loc[:, f'BTC-GBP_lag_{lag}'] = selected_data['BTC-GBP'].shift(lag)
-
-#     # Dropping rows with NaN values created due to shifting
-#     selected_data.dropna(inplace=True)
-
-#     # Features will be the lagged values, and the target will be the current BTC-GBP price
-#     features = [f'BTC-GBP_lag_{lag}' for lag in range(1, 4)]
-#     X = selected_data[features]
-#     y = selected_data['BTC-GBP']
-
-#     # Splitting the dataset into training and testing sets
-#     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-
-#     # User input for selecting the model
-#     model_choice = st.sidebar.selectbox("Choose Model", ['GBR', 'SVR', 'XGB', 'LSTM'])
-
-#     # Initialize and train the selected model
-#     if model_choice == 'GBR':
-#         model = GradientBoostingRegressor()
-#         params = {
-#             'n_estimators': [50, 100, 200],
-#             'learning_rate': [0.01, 0.1, 0.5],
-#             'max_depth': [3, 5, 7],
-#             'min_samples_leaf': [1, 2, 4],
-#             'subsample': [0.8, 0.9, 1.0]
-#         }
-#     elif model_choice == 'SVR':
-#         model = SVR()
-#         params = {
-#             'C': [0.1, 1, 10],
-#             'kernel': ['linear', 'rbf', 'poly'],
-#             'gamma': ['scale', 'auto']
-#         }
-#     elif model_choice == 'XGB':
-#         model = XGBRegressor()
-#         params = {
-#             'n_estimators': [50, 100, 200],
-#             'learning_rate': [0.01, 0.1, 0.5],
-#             'max_depth': [3, 5, 7],
-#             'subsample': [0.8, 0.9, 1.0]
-#         }
-#     elif model_choice == 'LSTM':
-#         model = Sequential()
-#         model.add(LSTM(units=50, input_shape=(X_train.shape[1], 1)))
-#         model.add(Dense(units=1))
-#         model.compile(optimizer='adam', loss='mean_squared_error')
-
-#         X_train_array = X_train.to_numpy()
-#         X_test_array = X_test.to_numpy()
-
-#         X_train_lstm = X_train_array.reshape(X_train_array.shape[0], X_train_array.shape[1], 1)
-#         X_test_lstm = X_test_array.reshape(X_test_array.shape[0], X_test_array.shape[1], 1)
-
-#         model.fit(X_train_lstm, y_train, epochs=100, batch_size=32)
-#         return None, None  # Return None as predictions and periods for LSTM model
-
-#     else:
-#         st.write("Invalid model choice. Please choose from GBR, SVR, XGB, or LSTM.")
-#         return None, None
-
-#     grid_search = GridSearchCV(estimator=model, param_grid=params, cv=5, scoring='neg_mean_squared_error')
-#     grid_search.fit(X_train, y_train)
-
-#     best_params = grid_search.best_params_
-#     st.write(f"Best parameters for {model_choice}:", best_params)
-
-#     model_best = model.set_params(**best_params)
-
-#     # Impute missing values using mean imputation
-#     imputer = SimpleImputer(strategy='mean')
-#     X_train_imputed = imputer.fit_transform(X_train)
-#     X_test_imputed = imputer.transform(X_test)
-
-#     # Fit the model using imputed data
-#     model_best.fit(X_train_imputed, y_train)
-
-#     return model_best, selected_data
-
-# def plot_average_prices(predictions, periods, frequency, mse):
-#     # Convert predictions and periods to DataFrame
-#     df = pd.DataFrame({'Period': periods, 'Prediction': predictions})
-#     df.set_index('Period', inplace=True)
-
-#     # Resample to the desired frequency and calculate the mean
-#     if frequency == 'daily':
-#         df_resampled = df
-#     elif frequency == 'weekly':
-#         df_resampled = df.resample('W').mean()
-#     elif frequency == 'monthly':
-#         df_resampled = df.resample('M').mean()
-#     elif frequency == 'quarterly':
-#         df_resampled = df.resample('Q').mean()
-#     else:
-#         st.write("Invalid frequency. Please choose from 'daily', 'weekly', 'monthly', or 'quarterly'.")
-#         return
-
-#     # Plot the average prices
-#     # mse = mean_squared_error(y_test[-num_periods:], predictions)
-#     plt.plot(df_resampled.index, df_resampled['Prediction'], marker='o')
-#     plt.xlabel('Date')
-#     plt.ylabel('Average BTC Price')
-#     plt.title(f'Average Predicted BTC Price ({frequency.capitalize()})')
-#     plt.grid(True)
     
-#     # Set x-axis tick labels
-#     plt.xticks(df_resampled.index, rotation=45, labels=df_resampled.index.strftime('%Y-%m-%d'))
+def display_selected(selected_data):
+    st.title("Boxplot of the 4 selected coins from K-mean clustering")
+    # selected_data = load_data()  # Assuming load_data() loads your DataFrame
 
-#     st.pyplot()
+    fig, axes = plt.subplots(nrows=1, ncols=4, figsize=(20, 10))  # Adjust nrows and ncols as per your dataset
+    colors = ['skyblue', 'lightgreen', 'tan', 'pink']  # List of colors for each boxplot
 
-# def plot_actual_forecast_with_confidence(actual, forecast, periods, upper_bound, lower_bound):
-#     # Plot actual and forecasted prices with confidence intervals
-#     # upper_bound = predictions + 1.96 * np.sqrt(mse)
-#     # lower_bound = predictions - 1.96 * np.sqrt(mse)
-#     plt.figure(figsize=(10, 6))
-#     plt.plot(periods, actual, label='Actual', color='blue')
-#     plt.plot(periods, forecast, label='Forecast', color='green')
-#     plt.fill_between(periods, upper_bound, lower_bound, color='lightgray', alpha=0.5, label='Confidence Interval')
-#     plt.xlabel('Date')
-#     plt.ylabel('BTC Price')
-#     plt.title('Actual vs Forecasted BTC Price with Confidence Interval')
-#     plt.legend()
-#     plt.grid(True)
-#     plt.xticks(rotation=45)
+    for ax, color, (columnName, columnData) in zip(axes, colors, selected_data.iteritems()):
+        # Plot boxplot with patch_artist=True to allow for color filling
+        bp = ax.boxplot(columnData, patch_artist=True, notch=True, vert=True, showfliers=True)
+        for patch in bp['boxes']:
+            patch.set_facecolor(color)  # Set color for each box
+        ax.set_title(columnName)  # Set the title for each subplot to the name of the coin
 
-#     st.pyplot()
+    fig.suptitle('Boxplot of the 4 selected coins from K-mean clustering', fontsize=22, x=0.5)  # Center the main title
+    plt.tight_layout()
+    plt.subplots_adjust(top=0.88)  # Adjust the top to make space for the suptitle
 
-# def main():
+    st.pyplot(fig)
+
+
     
         
 
@@ -954,156 +844,12 @@ def get_top_crypto_news(crypto, num_stories=5):
 #     plt.legend()
 #     st.pyplot(plt)
 
-import streamlit as st
-import numpy as np
-import matplotlib.pyplot as plt
-import pandas as pd
-from sklearn.model_selection import train_test_split, GridSearchCV
-from sklearn.ensemble import GradientBoostingRegressor
-from sklearn.svm import SVR
-from xgboost import XGBRegressor
-from keras.models import Sequential
-from keras.layers import LSTM, Dense
-from sklearn.impute import SimpleImputer
-from sklearn.metrics import mean_squared_error
-
-# Define function to evaluate models for BTC
-def evaluate_models_BTC(selected_data):
-    # Making a copy of the slice to ensure it's a separate object
-    selected_data = pd.DataFrame(selected_data)
-
-    for lag in range(1, 4):  # Adding lagged features for 1 to 3 days
-        selected_data.loc[:, f'BTC-GBP_lag_{lag}'] = selected_data['BTC-GBP'].shift(lag)
-
-    # Dropping rows with NaN values created due to shifting
-    selected_data.dropna(inplace=True)
-
-    # Features will be the lagged values, and the target will be the current BTC-GBP price
-    features = [f'BTC-GBP_lag_{lag}' for lag in range(1, 4)]
-    X = selected_data[features]
-    y = selected_data['BTC-GBP']
-
-    # Splitting the dataset into training and testing sets
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-
-    # User input for selecting the model
-    model_choice = st.sidebar.selectbox("Choose Model", ['GBR', 'SVR', 'XGB', 'LSTM'])
-
-    # Initialize and train the selected model
-    if model_choice == 'GBR':
-        model = GradientBoostingRegressor()
-        params = {
-            'n_estimators': [50, 100, 200],
-            'learning_rate': [0.01, 0.1, 0.5],
-            'max_depth': [3, 5, 7],
-            'min_samples_leaf': [1, 2, 4],
-            'subsample': [0.8, 0.9, 1.0]
-        }
-    elif model_choice == 'SVR':
-        model = SVR()
-        params = {
-            'C': [0.1, 1, 10],
-            'kernel': ['linear', 'rbf', 'poly'],
-            'gamma': ['scale', 'auto']
-        }
-    elif model_choice == 'XGB':
-        model = XGBRegressor()
-        params = {
-            'n_estimators': [50, 100, 200],
-            'learning_rate': [0.01, 0.1, 0.5],
-            'max_depth': [3, 5, 7],
-            'subsample': [0.8, 0.9, 1.0]
-        }
-    elif model_choice == 'LSTM':
-        model = Sequential()
-        model.add(LSTM(units=50, input_shape=(X_train.shape[1], 1)))
-        model.add(Dense(units=1))
-        model.compile(optimizer='adam', loss='mean_squared_error')
-
-        X_train_array = X_train.to_numpy()
-        X_test_array = X_test.to_numpy()
-
-        X_train_lstm = X_train_array.reshape(X_train_array.shape[0], X_train_array.shape[1], 1)
-        X_test_lstm = X_test_array.reshape(X_test_array.shape[0], X_test_array.shape[1], 1)
-
-        model.fit(X_train_lstm, y_train, epochs=100, batch_size=32)
-        return None, None  # Return None as predictions and periods for LSTM model
-
-    else:
-        st.write("Invalid model choice. Please choose from GBR, SVR, XGB, or LSTM.")
-        return None, None
-
-    grid_search = GridSearchCV(estimator=model, param_grid=params, cv=5, scoring='neg_mean_squared_error')
-    grid_search.fit(X_train, y_train)
-
-    best_params = grid_search.best_params_
-    st.write(f"Best parameters for {model_choice}:", best_params)
-
-    model_best = model.set_params(**best_params)
-
-    # Impute missing values using mean imputation
-    imputer = SimpleImputer(strategy='mean')
-    X_train_imputed = imputer.fit_transform(X_train)
-    X_test_imputed = imputer.transform(X_test)
-
-    # Fit the model using imputed data
-    model_best.fit(X_train_imputed, y_train)
-
-    return model_best, selected_data
-
-# Define function to plot average prices
-def plot_average_prices(predictions, periods, frequency, mse):
-    # Convert predictions and periods to DataFrame
-    df = pd.DataFrame({'Period': periods, 'Prediction': predictions})
-    df.set_index('Period', inplace=True)
-
-    # Resample to the desired frequency and calculate the mean
-    if frequency == 'daily':
-        df_resampled = df
-    elif frequency == 'weekly':
-        df_resampled = df.resample('W').mean()
-    elif frequency == 'monthly':
-        df_resampled = df.resample('M').mean()
-    elif frequency == 'quarterly':
-        df_resampled = df.resample('Q').mean()
-    else:
-        st.write("Invalid frequency. Please choose from 'daily', 'weekly', 'monthly', or 'quarterly'.")
-        return
-
-    # Plot the average prices
-    plt.plot(df_resampled.index, df_resampled['Prediction'], marker='o')
-    plt.xlabel('Date')
-    plt.ylabel('Average BTC Price')
-    plt.title(f'Average Predicted BTC Price ({frequency.capitalize()})')
-    plt.grid(True)
-    
-    # Set x-axis tick labels
-    plt.xticks(df_resampled.index, rotation=45, labels=df_resampled.index.strftime('%Y-%m-%d'))
-
-    st.pyplot()
-
-# Define function to plot actual and forecasted prices with confidence intervals
-def plot_actual_forecast_with_confidence(actual, forecast, periods, upper_bound, lower_bound):
-    plt.figure(figsize=(10, 6))
-    plt.plot(periods, actual, label='Actual', color='blue')
-    plt.plot(periods, forecast, label='Forecast', color='green')
-    plt.fill_between(periods, upper_bound, lower_bound, color='lightgray', alpha=0.5, label='Confidence Interval')
-    plt.xlabel('Date')
-    plt.ylabel('BTC Price')
-    plt.title('Actual vs Forecasted BTC Price with Confidence Interval')
-    plt.legend()
-    plt.grid(True)
-    plt.xticks(rotation=45)
-
-    st.pyplot()
-
 
     
 # Sidebar navigation
-side_bars = st.sidebar.radio("Navigation", ["Home", "About Us", "Dataset","Coin Correlation","Moving Average", "Visualizations", "Predictions","NEWS"])
+side_bars = st.sidebar.radio("Navigation", ["Home", "About Us", "Dataset","Coin Correlation","Moving Average", "Visualizations","Predictions","NEWS"])
 
-# Define y_test outside of the evaluate_models_BTC function
-y_test = None
+
 # Conditionals for sidebar navigation
 if side_bars == "Home":
     home_section()
@@ -1203,52 +949,26 @@ elif side_bars == "Visualizations":
         
 elif side_bars == "Predictions":
     st.write("You are on the Predictions page!")
-    # Load and preprocess data
-    selected_data = pd.read_csv("Selected_coins.csv", index_col='Date')  # Update with your data file path
-
-    # Evaluate the model and get the trained model and selected_data
-    model, selected_data = evaluate_models_BTC(selected_data)
-
-    if model is not None:
-        # User input for frequency and number of periods (weeks, months, or quarters)
-        frequency = st.sidebar.selectbox("Frequency", ['daily', 'weekly', 'monthly', 'quarterly'])
-        num_periods = st.sidebar.number_input("Number of Periods", min_value=1, step=1)
-
-        # Make predictions for the specified number of periods
-        features = [f'BTC-GBP_lag_{lag}' for lag in range(1, 4)]
-        X_array = selected_data[features].to_numpy()
-        predictions = model.predict(X_array[-num_periods:])  # Predictions for the last 'num_periods' rows
-
-        # Get the last date in the dataset
-        last_date = selected_data.index[-1]
-
-        # Generate periods for future predictions
-        if frequency == 'daily':
-            periods = pd.date_range(start=last_date, periods=num_periods, freq='D')
-        elif frequency == 'weekly':
-            periods = pd.date_range(start=last_date, periods=num_periods, freq='W')
-        elif frequency == 'monthly':
-            periods = pd.date_range(start=last_date, periods=num_periods, freq='M')
-        elif frequency == 'quarterly':
-            periods = pd.date_range(start=last_date, periods=num_periods, freq='Q')
+    st.header("About the Prediction Data")
+    st.write("The prediction data is from performing PCA to reduce dimentionality of the data with n_component of 10 and clustering the data with K-means into four clusters and selecting the best from each cluster using the centroid (You can visualize the selected data below)")
+     # Display selected data
+    if selected_data is not None:
+        if st.button("Display Selected Data"):
+            st.dataframe(selected_data)
         else:
-            st.write("Invalid frequency. Please choose from 'daily', 'weekly', 'monthly', or 'quarterly'.")
+            st.write("Click the button above to display the selected data.")
+    else:
+        st.write("Selected data is not available. Please check the file path and data format.")
+ 
+    st.write("Here you can make prediction and visualize forecast for the selected coins using one or all of the avaliable models\n 1. SVR\n 2. XGBoost\n 3. Gradient Boosting\n 4. LSTM")
+    display_selected(selected_data)
+   
+    
+    
+    
+    
 
-        # Plot average prices with confidence intervals
-        mse = mean_squared_error(y_test[-num_periods:], predictions)
-        plot_average_prices(predictions, periods, frequency, mse)
-
-        # Plot actual and forecasted prices with confidence intervals
-        upper_bound = predictions + 1.96 * np.sqrt(mse)
-        lower_bound = predictions - 1.96 * np.sqrt(mse)
-        plot_actual_forecast_with_confidence(y_test[-num_periods:], predictions, periods, upper_bound, lower_bound)
-
-#     elif visualization_option == "BoxPlot":
-#         # Display coin selection dropdown
-#         selected_coin = st.sidebar.selectbox("Select a cryptocurrency:", data['Crypto'].unique())
-
-        # Plot boxplot for the selected coin
-        # plot_boxplot(data, selected_coin)
+        
 elif side_bars == 'NEWS':
     # Ask the user for the cryptocurrency they want to see news about
     chosen_crypto = st.text_input("Enter the cryptocurrency you want to see news about:", "Bitcoin").strip().upper()
