@@ -6,8 +6,18 @@
 
 # In[ ]:
 
-
 import streamlit as st
+import os
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import GradientBoostingRegressor
+from sklearn.svm import SVR
+from xgboost import XGBRegressor
+from keras.models import Sequential, load_model
+from keras.layers import LSTM, Dense
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+import joblib
 import pandas as pd
 import matplotlib.pyplot as plt
 from sklearn.linear_model import LinearRegression
@@ -752,97 +762,854 @@ def display_selected(selected_data):
     st.pyplot(fig)
 
 
+# # the first coin models
+
+# def evaluate_models_selected_coin_1(selected_data, chosen_model='all'):
+#     # Making a copy of the slice to ensure it's a separate object
+#     selected_data = selected_data.copy()
+
+#     for lag in range(1, 4):  # Adding lagged features for 1 to 3 days
+#          selected_data.loc[:, f'{selected_data.columns[0]}_lag_{lag}'] = selected_data[selected_data.columns[0]].shift(lag)
+
+#     # Dropping rows with NaN values created due to shifting
+#     selected_data.dropna(inplace=True)
+
+#     # Features will be the lagged values, and the target will be the current price of the first coin
+#     features = [f'{selected_data.columns[0]}_lag_{lag}' for lag in range(1, 4)]
+#     X = selected_data[features]
+#     y = selected_data[selected_data.columns[0]]
+
+#     # Splitting the dataset into training and testing sets
+#     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+#     # Initialize dictionary to hold models
+#     models = {
+#         'GRADIENT BOOSTING': GradientBoostingRegressor(),
+#         'SVR': SVR(),
+#         'XGBOOST': XGBRegressor(),
+#         'LSTM': Sequential([LSTM(units=50, input_shape=(X_train.shape[1], 1)), Dense(units=1)])
+#     }
+
+#     eval_metrics = {}
+
+#     if chosen_model.lower() == 'all':
+#         chosen_models = models.keys()
+#     else:
+#         chosen_models = [chosen_model.upper()]  # Capitalize input for case insensitivity
+
+#     for model_name in chosen_models:
+#         if model_name not in models:
+#             print(f"Model '{model_name}' not found. Skipping...")
+#             continue
+
+#         model = models[model_name]
+
+#         if model_name == 'LSTM':
+#             model_filename = "Model_SELECTED_COIN_1//lstm_model.pkl"
+#             if os.path.exists(model_filename):
+#                 model = load_model(model_filename)
+#                 # Reshape the input data for LSTM model
+#                 X_test_array = X_test.to_numpy().reshape(X_test.shape[0], X_test.shape[1], 1)
+#                 predictions = model.predict(X_test_array).flatten()
+#             else:
+#                 print("No pre-trained LSTM model found.")
+#                 continue  # Skip the rest of the loop if LSTM model not found
+#         else:
+#             model.fit(X_train, y_train)  # Fit the model
+#             predictions = model.predict(X_test)
+
+#         # Calculate evaluation metrics
+#         mae = mean_absolute_error(y_test, predictions)
+#         mse = mean_squared_error(y_test, predictions)
+#         rmse = np.sqrt(mse)
+#         mape = np.mean(np.abs((y_test - predictions) / y_test)) * 100
+#         r2 = r2_score(y_test, predictions)
+
+#         # Store evaluation metrics
+#         eval_metrics[model_name] = {'MAE': mae, 'MSE': mse, 'RMSE': rmse, 'MAPE': mape, 'R2': r2}
+
+#     # Display evaluation metrics
+#     st.subheader("Evaluation Metrics")
+#     for model_name, metrics in eval_metrics.items():
+#         st.write(f"Evaluation metrics for {model_name}:")
+#         for metric_name, value in metrics.items():
+#             st.write(f"{metric_name}: {value}")
+#         st.write()
+
+#     # Plot evaluation metrics
+#     if eval_metrics:
+#         st.subheader("Evaluation Metric Visualization")
+#         fig, ax = plt.subplots(figsize=(12, 6))
+
+#         metrics = list(eval_metrics.keys())
+#         mae_values = [eval_metrics[model]['MAE'] for model in metrics]  # Corrected access to values
+#         mse_values = [eval_metrics[model]['MSE'] for model in metrics]  # Corrected access to values
+#         rmse_values = [eval_metrics[model]['RMSE'] for model in metrics]  # Corrected access to values
+
+#         bar_width = 0.15  # Increased bar width
+#         index = np.arange(len(metrics))
+
+#         bar1 = ax.bar(index - 2*bar_width, mae_values, bar_width, label='MAE')  # Adjusted positions for bars
+#         bar2 = ax.bar(index - bar_width, mse_values, bar_width, label='MSE')   # Adjusted positions for bars
+#         bar3 = ax.bar(index, rmse_values, bar_width, label='RMSE')              # Adjusted positions for bars
+
+#         ax.set_xlabel('Models')
+#         ax.set_ylabel('Metrics')
+#         ax.set_title(f'Evaluation Metrics for {selected_data.columns[0]} using {chosen_model.upper()} as the Models')
+#         ax.set_xticks(index)
+#         ax.set_xticklabels(metrics)
+#         ax.legend()
+
+#         # Annotate bars with values
+#         for bars in [bar1, bar2, bar3]:
+#             for bar in bars:
+#                 height = bar.get_height()
+#                 ax.annotate('{}'.format(round(height, 2)),
+#                             xy=(bar.get_x() + bar.get_width() / 2, height),
+#                             xytext=(0, 3),  # 3 points vertical offset
+#                             textcoords="offset points",
+#                             ha='center', va='bottom')
+
+#         st.pyplot(fig)
+#     else:
+#         st.write("No models were evaluated.")
+        
+# # second coin
+
+# def evaluate_models_selected_coin_2(selected_data, chosen_model='all'):
+#     # Making a copy of the slice to ensure it's a separate object
+#     selected_data = selected_data.copy()
+
+#     for lag in range(1, 4):  # Adding lagged features for 1 to 3 days
+#          selected_data.loc[:, f'{selected_data.columns[1]}_lag_{lag}'] = selected_data[selected_data.columns[1]].shift(lag)
+
+#     # Dropping rows with NaN values created due to shifting
+#     selected_data.dropna(inplace=True)
+
+#     # Features will be the lagged values, and the target will be the current price of the first coin
+#     features = [f'{selected_data.columns[1]}_lag_{lag}' for lag in range(1, 4)]
+#     X = selected_data[features]
+#     y = selected_data[selected_data.columns[1]]
+
+#     # Splitting the dataset into training and testing sets
+#     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+#     # Initialize dictionary to hold models
+#     models = {
+#         'GRADIENT BOOSTING': GradientBoostingRegressor(),
+#         'SVR': SVR(),
+#         'XGBOOST': XGBRegressor(),
+#         'LSTM': Sequential([LSTM(units=50, input_shape=(X_train.shape[1], 1)), Dense(units=1)])
+#     }
+
+#     eval_metrics = {}
+
+#     if chosen_model.lower() == 'all':
+#         chosen_models = models.keys()
+#     else:
+#         chosen_models = [chosen_model.upper()]  # Capitalize input for case insensitivity
+
+#     for model_name in chosen_models:
+#         if model_name not in models:
+#             print(f"Model '{model_name}' not found. Skipping...")
+#             continue
+
+#         model = models[model_name]
+
+#         if model_name == 'LSTM':
+#             model_filename = "Model_SELECTED_COIN_2//lstm_model.pkl"
+#             if os.path.exists(model_filename):
+#                 model = load_model(model_filename)
+#                 # Reshape the input data for LSTM model
+#                 X_test_array = X_test.to_numpy().reshape(X_test.shape[0], X_test.shape[1], 1)
+#                 predictions = model.predict(X_test_array).flatten()
+#             else:
+#                 print("No pre-trained LSTM model found.")
+#                 continue  # Skip the rest of the loop if LSTM model not found
+#         else:
+#             model.fit(X_train, y_train)  # Fit the model
+#             predictions = model.predict(X_test)
+
+#         # Calculate evaluation metrics
+#         mae = mean_absolute_error(y_test, predictions)
+#         mse = mean_squared_error(y_test, predictions)
+#         rmse = np.sqrt(mse)
+#         mape = np.mean(np.abs((y_test - predictions) / y_test)) * 100
+#         r2 = r2_score(y_test, predictions)
+
+#         # Store evaluation metrics
+#         eval_metrics[model_name] = {'MAE': mae, 'MSE': mse, 'RMSE': rmse, 'MAPE': mape, 'R2': r2}
+
+#     # Display evaluation metrics
+#     st.subheader("Evaluation Metrics")
+#     for model_name, metrics in eval_metrics.items():
+#         st.write(f"Evaluation metrics for {model_name}:")
+#         for metric_name, value in metrics.items():
+#             st.write(f"{metric_name}: {value}")
+#         st.write()
+
+#     # Plot evaluation metrics
+#     if eval_metrics:
+#         st.subheader("Evaluation Metric Visualization")
+#         fig, ax = plt.subplots(figsize=(12, 6))
+
+#         metrics = list(eval_metrics.keys())
+#         mae_values = [eval_metrics[model]['MAE'] for model in metrics]  # Corrected access to values
+#         mse_values = [eval_metrics[model]['MSE'] for model in metrics]  # Corrected access to values
+#         rmse_values = [eval_metrics[model]['RMSE'] for model in metrics]  # Corrected access to values
+
+#         bar_width = 0.15  # Increased bar width
+#         index = np.arange(len(metrics))
+
+#         bar1 = ax.bar(index - 2*bar_width, mae_values, bar_width, label='MAE')  # Adjusted positions for bars
+#         bar2 = ax.bar(index - bar_width, mse_values, bar_width, label='MSE')   # Adjusted positions for bars
+#         bar3 = ax.bar(index, rmse_values, bar_width, label='RMSE')              # Adjusted positions for bars
+
+#         ax.set_xlabel('Models')
+#         ax.set_ylabel('Metrics')
+#         ax.set_title(f'Evaluation Metrics for {selected_data.columns[1]} using {chosen_model.upper()} as the Models')
+#         ax.set_xticks(index)
+#         ax.set_xticklabels(metrics)
+#         ax.legend()
+
+#         # Annotate bars with values
+#         for bars in [bar1, bar2, bar3]:
+#             for bar in bars:
+#                 height = bar.get_height()
+#                 ax.annotate('{}'.format(round(height, 2)),
+#                             xy=(bar.get_x() + bar.get_width() / 2, height),
+#                             xytext=(0, 3),  # 3 points vertical offset
+#                             textcoords="offset points",
+#                             ha='center', va='bottom')
+
+#         st.pyplot(fig)
+#     else:
+#         st.write("No models were evaluated.")
+
+
+
+
+# # the third coin models
+
+# def evaluate_models_selected_coin_3(selected_data, chosen_model='all'):
+#     # Making a copy of the slice to ensure it's a separate object
+#     selected_data = selected_data.copy()
+
+#     for lag in range(1, 4):  # Adding lagged features for 1 to 3 days
+#          selected_data.loc[:, f'{selected_data.columns[2]}_lag_{lag}'] = selected_data[selected_data.columns[2]].shift(lag)
+
+#     # Dropping rows with NaN values created due to shifting
+#     selected_data.dropna(inplace=True)
+
+#     # Features will be the lagged values, and the target will be the current price of the first coin
+#     features = [f'{selected_data.columns[2]}_lag_{lag}' for lag in range(1, 4)]
+#     X = selected_data[features]
+#     y = selected_data[selected_data.columns[2]]
+
+#     # Splitting the dataset into training and testing sets
+#     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+#     # Initialize dictionary to hold models
+#     models = {
+#         'GRADIENT BOOSTING': GradientBoostingRegressor(),
+#         'SVR': SVR(),
+#         'XGBOOST': XGBRegressor(),
+#         'LSTM': Sequential([LSTM(units=50, input_shape=(X_train.shape[1], 1)), Dense(units=1)])
+#     }
+
+#     eval_metrics = {}
+
+#     if chosen_model.lower() == 'all':
+#         chosen_models = models.keys()
+#     else:
+#         chosen_models = [chosen_model.upper()]  # Capitalize input for case insensitivity
+
+#     for model_name in chosen_models:
+#         if model_name not in models:
+#             print(f"Model '{model_name}' not found. Skipping...")
+#             continue
+
+#         model = models[model_name]
+
+#         if model_name == 'LSTM':
+#             model_filename = "Model_SELECTED_COIN_3//lstm_model.pkl"
+#             if os.path.exists(model_filename):
+#                 model = load_model(model_filename)
+#                 # Reshape the input data for LSTM model
+#                 X_test_array = X_test.to_numpy().reshape(X_test.shape[0], X_test.shape[1], 1)
+#                 predictions = model.predict(X_test_array).flatten()
+#             else:
+#                 print("No pre-trained LSTM model found.")
+#                 continue  # Skip the rest of the loop if LSTM model not found
+#         else:
+#             model.fit(X_train, y_train)  # Fit the model
+#             predictions = model.predict(X_test)
+
+#         # Calculate evaluation metrics
+#         mae = mean_absolute_error(y_test, predictions)
+#         mse = mean_squared_error(y_test, predictions)
+#         rmse = np.sqrt(mse)
+#         mape = np.mean(np.abs((y_test - predictions) / y_test)) * 100
+#         r2 = r2_score(y_test, predictions)
+
+#         # Store evaluation metrics
+#         eval_metrics[model_name] = {'MAE': mae, 'MSE': mse, 'RMSE': rmse, 'MAPE': mape, 'R2': r2}
+
+#     # Display evaluation metrics
+#     st.subheader("Evaluation Metrics")
+#     for model_name, metrics in eval_metrics.items():
+#         st.write(f"Evaluation metrics for {model_name}:")
+#         for metric_name, value in metrics.items():
+#             st.write(f"{metric_name}: {value}")
+#         st.write()
+
+#     # Plot evaluation metrics
+#     if eval_metrics:
+#         st.subheader("Evaluation Metric Visualization")
+#         fig, ax = plt.subplots(figsize=(12, 6))
+
+#         metrics = list(eval_metrics.keys())
+#         mae_values = [eval_metrics[model]['MAE'] for model in metrics]  # Corrected access to values
+#         mse_values = [eval_metrics[model]['MSE'] for model in metrics]  # Corrected access to values
+#         rmse_values = [eval_metrics[model]['RMSE'] for model in metrics]  # Corrected access to values
+
+#         bar_width = 0.15  # Increased bar width
+#         index = np.arange(len(metrics))
+
+#         bar1 = ax.bar(index - 2*bar_width, mae_values, bar_width, label='MAE')  # Adjusted positions for bars
+#         bar2 = ax.bar(index - bar_width, mse_values, bar_width, label='MSE')   # Adjusted positions for bars
+#         bar3 = ax.bar(index, rmse_values, bar_width, label='RMSE')              # Adjusted positions for bars
+
+#         ax.set_xlabel('Models')
+#         ax.set_ylabel('Metrics')
+#         ax.set_title(f'Evaluation Metrics for {selected_data.columns[2]} using {chosen_model.upper()} as the Models')
+#         ax.set_xticks(index)
+#         ax.set_xticklabels(metrics)
+#         ax.legend()
+
+#         # Annotate bars with values
+#         for bars in [bar1, bar2, bar3]:
+#             for bar in bars:
+#                 height = bar.get_height()
+#                 ax.annotate('{}'.format(round(height, 2)),
+#                             xy=(bar.get_x() + bar.get_width() / 2, height),
+#                             xytext=(0, 3),  # 3 points vertical offset
+#                             textcoords="offset points",
+#                             ha='center', va='bottom')
+
+#         st.pyplot(fig)
+#     else:
+#         st.write("No models were evaluated.")
     
         
+# # the fourth coin
 
 
-# if side_bars == "Predictions":
-#     st.title('Cryptocurrency Price Volatility Example')
-#     st.write("Cryptocurrency markets are known for their complexities and volatility.")
+# def evaluate_models_selected_coin_4(selected_data, chosen_model='all'):
+#     # Making a copy of the slice to ensure it's a separate object
+#     selected_data = selected_data.copy()
 
-#     # Select cryptocurrencies for prediction
-#     selected_crypto = st.multiselect("Select cryptocurrencies:", data['Crypto'].unique())
+#     for lag in range(1, 4):  # Adding lagged features for 1 to 3 days
+#          selected_data.loc[:, f'{selected_data.columns[3]}_lag_{lag}'] = selected_data[selected_data.columns[3]].shift(lag)
 
-#     # Prepare data for Linear Regression
-#     plt.figure(figsize=(10, 6))
-#     for crypto in selected_crypto:
-#         crypto_data = data[data['Crypto'] == crypto]
-#         x = np.array(crypto_data.index).reshape(-1, 1)
-#         y = crypto_data['Price']
+#     # Dropping rows with NaN values created due to shifting
+#     selected_data.dropna(inplace=True)
 
-#         # Linear Regression model
-#         lr = LinearRegression()
-#         lr.fit(x, y)
-#         predicted = lr.predict(x)
+#     # Features will be the lagged values, and the target will be the current price of the first coin
+#     features = [f'{selected_data.columns[3]}_lag_{lag}' for lag in range(1, 4)]
+#     X = selected_data[features]
+#     y = selected_data[selected_data.columns[3]]
 
-#         # Display predicted values and corresponding dates
-#         st.write(f"Predicted Values and Corresponding Dates for {crypto}:")
-#         prediction_df = pd.DataFrame({'Date': crypto_data['Date'], 'Predicted Price': predicted})
-#         st.write(prediction_df)
+#     # Splitting the dataset into training and testing sets
+#     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-#         # Display scatter plot with Linear Regression line
-#         plt.scatter(x, y, label=f'Actual Prices ({crypto})')
-#         plt.plot(x, predicted, label=f'Linear Regression ({crypto})')
+#     # Initialize dictionary to hold models
+#     models = {
+#         'GRADIENT BOOSTING': GradientBoostingRegressor(),
+#         'SVR': SVR(),
+#         'XGBOOST': XGBRegressor(),
+#         'LSTM': Sequential([LSTM(units=50, input_shape=(X_train.shape[1], 1)), Dense(units=1)])
+#     }
 
-#         plt.xlabel('Days')
-#         plt.ylabel('Price')
-#         plt.title(f'Cryptocurrency Price Volatility Prediction for {", ".join(selected_crypto)}')
-#         plt.legend()
-#         st.pyplot(plt)
+#     eval_metrics = {}
 
-#     # crypto_data = data[data['Crypto'] == 'Bitcoin']
-#     # Select cryptocurrency for prediction
-#     selected_crypto = st.selectbox("Select a cryptocurrency:", data['Crypto'].unique())
-#     crypto_data = data[data['Crypto'] == selected_crypto]
+#     if chosen_model.lower() == 'all':
+#         chosen_models = models.keys()
+#     else:
+#         chosen_models = [chosen_model.upper()]  # Capitalize input for case insensitivity
 
-#     # Prepare data for Linear Regression
-#     x = np.array(crypto_data.index).reshape(-1, 1)
-#     y = crypto_data['Price']
+#     for model_name in chosen_models:
+#         if model_name not in models:
+#             print(f"Model '{model_name}' not found. Skipping...")
+#             continue
 
-#     # Linear Regression model
-#     lr = LinearRegression()
-#     lr.fit(x, y)
-#     predicted = lr.predict(x)
+#         model = models[model_name]
 
-#     # Display predicted values and corresponding dates
-#     st.write(f"Predicted Values and Corresponding Dates for {selected_crypto}:")
-#     prediction_df = pd.DataFrame({'Date': crypto_data['Date'], 'Predicted Price': predicted})
-#     st.write(prediction_df)
+#         if model_name == 'LSTM':
+#             model_filename = "Model_SELECTED_COIN_4//lstm_model.pkl"
+#             if os.path.exists(model_filename):
+#                 model = load_model(model_filename)
+#                 # Reshape the input data for LSTM model
+#                 X_test_array = X_test.to_numpy().reshape(X_test.shape[0], X_test.shape[1], 1)
+#                 predictions = model.predict(X_test_array).flatten()
+#             else:
+#                 print("No pre-trained LSTM model found.")
+#                 continue  # Skip the rest of the loop if LSTM model not found
+#         else:
+#             model.fit(X_train, y_train)  # Fit the model
+#             predictions = model.predict(X_test)
 
-#     st.write(f"Visualizing Cryptocurrency Price Prediction for {selected_crypto}:")
-#     # Display scatter plot with Linear Regression line
-#     plt.figure(figsize=(10, 6))
-#     plt.scatter(x, y, label='Actual Prices', color='blue')
-#     plt.plot(x, predicted, label='Linear Regression', color='red')
-#     plt.xlabel('Days')
-#     plt.ylabel('Price')
-#     plt.title(f'Cryptocurrency Price Volatility Prediction for {selected_crypto}')
-#     plt.legend()
-#     st.pyplot(plt)
+#         # Calculate evaluation metrics
+#         mae = mean_absolute_error(y_test, predictions)
+#         mse = mean_squared_error(y_test, predictions)
+#         rmse = np.sqrt(mse)
+#         mape = np.mean(np.abs((y_test - predictions) / y_test)) * 100
+#         r2 = r2_score(y_test, predictions)
 
-#     # Prepare data for Linear Regression
-#     x = np.array(crypto_data.index).reshape(-1, 1)
-#     y = crypto_data['Price']
+#         # Store evaluation metrics
+#         eval_metrics[model_name] = {'MAE': mae, 'MSE': mse, 'RMSE': rmse, 'MAPE': mape, 'R2': r2}
 
-#     # Linear Regression model
-#     lr = LinearRegression()
-#     lr.fit(x, y)
-#     predicted = lr.predict(x)
+#     # Display evaluation metrics
+#     st.subheader(f"Evaluation Metrics {model_name}")
+#     for model_name, metrics in eval_metrics.items():
+#         st.subheader(f"Evaluation metrics for {model_name}:")
+#         for metric_name, value in metrics.items():
+#             st.write(f"{metric_name}: {value}")
+#         st.write()
 
-#    # Display predicted values and corresponding dates
-#     st.write("Predicted Values and Corresponding Dates:")
-#     st.write(pd.DataFrame({'Date': crypto_data['Date'], 'Predicted Price': predicted}))
+#     # Plot evaluation metrics
+#     if eval_metrics:
+#         st.subheader("Evaluation Metric Visualization")
+#         fig, ax = plt.subplots(figsize=(12, 6))
 
-#     st.write("Let's visualize the limitations of a Linear Regression model.")
-#     # Display scatter plot with Linear Regression line
-#     plt.figure(figsize=(10, 6))
-#     plt.scatter(x, y, label='Actual Prices', color='blue')
-#     plt.plot(x, predicted, label='Linear Regression', color='red')
-#     plt.xlabel('Days')
-#     plt.ylabel('Price')
-#     plt.title('Cryptocurrency Price Volatility')
-#     plt.legend()
-#     st.pyplot(plt)
+#         metrics = list(eval_metrics.keys())
+#         mae_values = [eval_metrics[model]['MAE'] for model in metrics]  # Corrected access to values
+#         mse_values = [eval_metrics[model]['MSE'] for model in metrics]  # Corrected access to values
+#         rmse_values = [eval_metrics[model]['RMSE'] for model in metrics]  # Corrected access to values
+
+#         bar_width = 0.15  # Increased bar width
+#         index = np.arange(len(metrics))
+
+#         bar1 = ax.bar(index - 2*bar_width, mae_values, bar_width, label='MAE')  # Adjusted positions for bars
+#         bar2 = ax.bar(index - bar_width, mse_values, bar_width, label='MSE')   # Adjusted positions for bars
+#         bar3 = ax.bar(index, rmse_values, bar_width, label='RMSE')              # Adjusted positions for bars
+
+#         ax.set_xlabel('Models')
+#         ax.set_ylabel('Metrics')
+#         ax.set_title(f'Evaluation Metrics for {selected_data.columns[3]} using {chosen_model.upper()} as the Models')
+#         ax.set_xticks(index)
+#         ax.set_xticklabels(metrics)
+#         ax.legend()
+
+#         # Annotate bars with values
+#         for bars in [bar1, bar2, bar3]:
+#             for bar in bars:
+#                 height = bar.get_height()
+#                 ax.annotate('{}'.format(round(height, 2)),
+#                             xy=(bar.get_x() + bar.get_width() / 2, height),
+#                             xytext=(0, 3),  # 3 points vertical offset
+#                             textcoords="offset points",
+#                             ha='center', va='bottom')
+
+#         st.pyplot(fig)
+#     else:
+#         st.write("No models were evaluated.")
+
+# gauja
+
+# Function to evaluate models for selected coins
+def evaluate_models_selected_coin(selected_data, column_index, chosen_model='all'):
+    coin_name = selected_data.columns[column_index] 
+
+    # Add lagged features for 1 to 3 days
+    for lag in range(1, 4):
+        selected_data.loc[:, f'{coin_name}_lag_{lag}'] = selected_data[coin_name].shift(lag)
+
+    # Drop rows with NaN values created due to shifting
+    selected_data.dropna(inplace=True)
+
+    # Features will be the lagged values, and the target will be the current price of the coin
+    features = [f'{coin_name}_lag_{lag}' for lag in range(1, 4)]
+    X = selected_data[features]
+    y = selected_data[coin_name]
+
+    # Split the dataset into training and testing sets
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+    # Initialize dictionary to hold models
+    models = {
+        'GRADIENT BOOSTING': GradientBoostingRegressor(),
+        'SVR': SVR(),
+        'XGBOOST': XGBRegressor(),
+        'LSTM': Sequential([LSTM(units=50, input_shape=(X_train.shape[1], 1)), Dense(units=1)])
+    }
+
+    eval_metrics = {}
+
+    if chosen_model.lower() == 'all':
+        chosen_models = models.keys()
+    else:
+        chosen_models = [chosen_model.upper()]  # Capitalize input for case insensitivity
+
+    for model_name in chosen_models:
+        if model_name not in models:
+            st.warning(f"Model '{model_name}' not found. Skipping...")
+            continue
+
+        model = models[model_name]
+
+        if model_name == 'LSTM':
+            model_filename = f"Model_SELECTED_COIN_{column_index+1}/lstm_model.pkl"
+            if os.path.exists(model_filename):
+                model = load_model(model_filename)
+                # Reshape the input data for LSTM model
+                X_test_array = X_test.to_numpy().reshape(X_test.shape[0], X_test.shape[1], 1)
+                predictions = model.predict(X_test_array).flatten()
+            else:
+                st.error("No pre-trained LSTM model found.")
+                return  # Skip the rest of the loop if LSTM model not found
+        else:
+            model.fit(X_train, y_train)  # Fit the model
+            predictions = model.predict(X_test)
+
+        # Calculate evaluation metrics
+        mae = mean_absolute_error(y_test, predictions)
+        mse = mean_squared_error(y_test, predictions)
+        rmse = np.sqrt(mse)
+        mape = np.mean(np.abs((y_test - predictions) / y_test)) * 100
+        r2 = r2_score(y_test, predictions)
+
+        # Store evaluation metrics
+        eval_metrics[model_name] = {'MAE': mae, 'MSE': mse, 'RMSE': rmse, 'MAPE': mape, 'R2': r2}
+
+    # Display evaluation metrics
+    st.subheader(f"Evaluation Metrics for {coin_name}:")
+    for model_name, metrics in eval_metrics.items():
+        st.write(f"Evaluation metrics for {model_name}:")
+        for metric_name, value in metrics.items():
+            st.write(f"{metric_name}: {value}")
+        st.write('---')
+
+    # Plot evaluation metrics
+    if eval_metrics:
+        st.subheader("Evaluation Metric Visualization")
+        fig, ax = plt.subplots(figsize=(12, 6))
+
+        metrics = list(eval_metrics.keys())
+        mae_values = [eval_metrics[model]['MAE'] for model in metrics]
+        mse_values = [eval_metrics[model]['MSE'] for model in metrics]
+        rmse_values = [eval_metrics[model]['RMSE'] for model in metrics]
+
+        bar_width = 0.15
+        index = np.arange(len(metrics))
+
+        bar1 = ax.bar(index - 2*bar_width, mae_values, bar_width, label='MAE')
+        bar2 = ax.bar(index - bar_width, mse_values, bar_width, label='MSE')
+        bar3 = ax.bar(index, rmse_values, bar_width, label='RMSE')
+
+        ax.set_xlabel('Models')
+        ax.set_ylabel('Metrics')
+        ax.set_title(f'Evaluation Metrics for {coin_name} using {chosen_model.upper()} as the Models')
+        ax.set_xticks(index)
+        ax.set_xticklabels(metrics)
+        ax.legend()
+
+        # Annotate bars with values
+        for bars in [bar1, bar2, bar3]:
+            for bar in bars:
+                height = bar.get_height()
+                ax.annotate('{}'.format(round(height, 2)),
+                            xy=(bar.get_x() + bar.get_width() / 2, height),
+                            xytext=(0, 3),  # 3 points vertical offset
+                            textcoords="offset points",
+                            ha='center', va='bottom')
+
+        st.pyplot(fig)
+    else:
+        st.error("No models were evaluated.")
+
+def plot_predictions(model, selected_data, X_test, y_test, coin_index):
+    if model is not None:
+        coin_name = selected_data.columns[coin_index]  # Get the name of the coin based on index
+        
+        # User input for frequency and number of periods (weeks, months, or quarters)
+        frequency = st.selectbox(f"Select frequency for {coin_name}", ['Daily', 'Weekly', 'Monthly', 'Quarterly']).lower()
+        num_periods = st.number_input(f"Enter the number of periods for {coin_name}", min_value=1, step=1)
+
+        # Make predictions for the specified number of periods
+        features = [f'{coin_name}_lag_{lag}' for lag in range(1, 4)]
+        X_array = selected_data[features].to_numpy()
+        predictions = model.predict(X_array[-num_periods:])  # Predictions for the last 'num_periods' rows
+
+        # Get the last date in the dataset
+        last_date = selected_data.index[-1]
+
+        # Generate periods for future predictions
+        if frequency == 'daily':
+            periods = pd.date_range(start=last_date, periods=num_periods, freq='D')
+        elif frequency == 'weekly':
+            periods = pd.date_range(start=last_date, periods=num_periods, freq='W')
+        elif frequency == 'monthly':
+            periods = pd.date_range(start=last_date, periods=num_periods, freq='M')
+        elif frequency == 'quarterly':
+            periods = pd.date_range(start=last_date, periods=num_periods, freq='Q')
+        else:
+            st.error("Invalid frequency. Please choose from 'daily', 'weekly', 'monthly', or 'quarterly'.")
+
+        # Calculate prediction intervals
+        predictions_series = pd.Series(predictions, index=periods)
+        pred_int = sm.tools.eval_measures.prediction_interval(predictions_series)
+
+        # Plot average prices with confidence intervals
+        mse = mean_squared_error(y_test[-num_periods:], predictions)
+        st.write(f"Mean Squared Error for {coin_name}: {mse}")
+
+        # Creating a time series plot with predicted prices and confidence intervals
+        st.subheader(f"Predicted Prices and Confidence Intervals for {coin_name} by {frequency}")
+        plt.figure(figsize=(10, 6))
+        plt.plot(periods, predictions, label='Predicted Price')
+        plt.fill_between(pred_int.index, pred_int.iloc[:, 0], pred_int.iloc[:, 1], color='blue', alpha=0.2, label='95% Prediction Interval')
+        plt.title(f"Predicted Prices for {coin_name} by {frequency}")
+        plt.xlabel('Date')
+        plt.ylabel('Price')
+        plt.legend()
+        plt.grid(True)
+        st.pyplot()
+
+
+# # imporimport streamlit as st
+# import numpy as np
+# import matplotlib.pyplot as plt
+# import pandas as pd
+# from sklearn.model_selection import train_test_split
+# from sklearn.ensemble import GradientBoostingRegressor
+# from sklearn.svm import SVR
+# from xgboost import XGBRegressor
+# from keras.models import Sequential, load_model
+# from keras.layers import LSTM, Dense
+# from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+# import os
+
+# # Function to evaluate models for selected coins
+# def evaluate_models_selected_coin(selected_data, column_index, chosen_model='all'):
+#     coin_name = selected_data.columns[column_index] 
+
+#     # Add lagged features for 1 to 3 days
+#     for lag in range(1, 4):
+#         selected_data.loc[:, f'{coin_name}_lag_{lag}'] = selected_data[coin_name].shift(lag)
+
+#     # Drop rows with NaN values created due to shifting
+#     selected_data.dropna(inplace=True)
+
+#     # Features will be the lagged values, and the target will be the current price of the coin
+#     features = [f'{coin_name}_lag_{lag}' for lag in range(1, 4)]
+#     X = selected_data[features]
+#     y = selected_data[coin_name]
+
+#     # Split the dataset into training and testing sets
+#     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+#     # Initialize dictionary to hold models
+#     models = {
+#         'GRADIENT BOOSTING': GradientBoostingRegressor(),
+#         'SVR': SVR(),
+#         'XGBOOST': XGBRegressor(),
+#         'LSTM': Sequential([LSTM(units=50, input_shape=(X_train.shape[1], 1)), Dense(units=1)])
+#     }
+
+#     eval_metrics = {}
+
+#     if chosen_model.lower() == 'all':
+#         chosen_models = models.keys()
+#     else:
+#         chosen_models = [chosen_model.upper()]  # Capitalize input for case insensitivity
+
+#     for model_name in chosen_models:
+#         if model_name not in models:
+#             st.warning(f"Model '{model_name}' not found. Skipping...")
+#             continue
+
+#         model = models[model_name]
+
+#         if model_name == 'LSTM':
+#             model_filename = f"Model_SELECTED_COIN_{column_index+1}/lstm_model.pkl"
+#             if os.path.exists(model_filename):
+#                 model = load_model(model_filename)
+#                 # Reshape the input data for LSTM model
+#                 X_test_array = X_test.to_numpy().reshape(X_test.shape[0], X_test.shape[1], 1)
+#                 predictions = model.predict(X_test_array).flatten()
+#             else:
+#                 st.error("No pre-trained LSTM model found.")
+#                 return  # Skip the rest of the loop if LSTM model not found
+#         else:
+#             model.fit(X_train, y_train)  # Fit the model
+#             predictions = model.predict(X_test)
+
+#         # Calculate evaluation metrics
+#         mae = mean_absolute_error(y_test, predictions)
+#         mse = mean_squared_error(y_test, predictions)
+#         rmse = np.sqrt(mse)
+#         mape = np.mean(np.abs((y_test - predictions) / y_test)) * 100
+#         r2 = r2_score(y_test, predictions)
+
+#         # Store evaluation metrics
+#         eval_metrics[model_name] = {'MAE': mae, 'MSE': mse, 'RMSE': rmse, 'MAPE': mape, 'R2': r2}
+
+#     # Display evaluation metrics
+#     st.subheader(f"Evaluation Metrics for {coin_name}:")
+#     for model_name, metrics in eval_metrics.items():
+#         st.write(f"Evaluation metrics for {model_name}:")
+#         for metric_name, value in metrics.items():
+#             st.write(f"{metric_name}: {value}")
+#         st.write('---')
+
+#     # Plot evaluation metrics
+#     if eval_metrics:
+#         st.subheader("Evaluation Metric Visualization")
+#         fig, ax = plt.subplots(figsize=(12, 6))
+
+#         metrics = list(eval_metrics.keys())
+#         mae_values = [eval_metrics[model]['MAE'] for model in metrics]
+#         mse_values = [eval_metrics[model]['MSE'] for model in metrics]
+#         rmse_values = [eval_metrics[model]['RMSE'] for model in metrics]
+
+#         bar_width = 0.15
+#         index = np.arange(len(metrics))
+
+#         bar1 = ax.bar(index - 2*bar_width, mae_values, bar_width, label='MAE')
+#         bar2 = ax.bar(index - bar_width, mse_values, bar_width, label='MSE')
+#         bar3 = ax.bar(index, rmse_values, bar_width, label='RMSE')
+
+#         ax.set_xlabel('Models')
+#         ax.set_ylabel('Metrics')
+#         ax.set_title(f'Evaluation Metrics for {coin_name} using {chosen_model.upper()} as the Models')
+#         ax.set_xticks(index)
+#         ax.set_xticklabels(metrics)
+#         ax.legend()
+
+#         # Annotate bars with values
+#         for bars in [bar1, bar2, bar3]:
+#             for bar in bars:
+#                 height = bar.get_height()
+#                 ax.annotate('{}'.format(round(height, 2)),
+#                             xy=(bar.get_x() + bar.get_width() / 2, height),
+#                             xytext=(0, 3),  # 3 points vertical offset
+#                             textcoords="offset points",
+#                             ha='center', va='bottom')
+
+#         st.pyplot(fig)
+#     else:
+#         st.error("No models were evaluated.")
+
+
+
+
+        
+        
+# prediction graphs
+
+# Function to evaluate different models for the coin price prediction
+def evaluate_models_coin(selected_data, coin_index):
+    coin_name = selected_data.columns[coin_index]  # Get the name of the coin based on index
+    # Add lagged features for 1 to 3 days
+    for lag in range(1, 4):
+        selected_data.loc[:, f'{coin_name}_lag_{lag}'] = selected_data[coin_name].shift(lag)
+
+    # Drop rows with NaN values created due to shifting
+    selected_data.dropna(inplace=True)
+
+    # Features will be the lagged values, and the target will be the current price of the coin
+    features = [f'{coin_name}_lag_{lag}' for lag in range(1, 4)]
+    X = selected_data[features]
+    y = selected_data[coin_name]
+
+    # Split the dataset into training and testing sets
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+    # Initialize dictionary to hold models
+    models = {
+        'GBR': GradientBoostingRegressor(),
+        'SVR': SVR(),
+        'XGB': XGBRegressor(),  # Alias for XGBoost
+        'LSTM': Sequential([LSTM(units=50, input_shape=(X_train.shape[1], 1)), Dense(units=1)])
+    }
+    # Load pre-trained models for SVR, XGBoost, and Gradient Boosting
+    for model_name in ['SVR', 'XGBoost', 'Gradient Boosting']:
+        model_filename = f"Model_SELECTED_COIN_{coin_index+1}/{model_name.lower().replace(' ', '_')}_model.pkl"
+        if os.path.exists(model_filename):
+            models[model_name] = joblib.load(model_filename)
+        else:
+            st.warning(f"No pre-trained model found for {model_name}. Skipping...")
+
+    # User input for selecting the model
+    model_choice = st.selectbox(f"Select model for {coin_name}", ['SVR', 'XGB', 'GBR', 'LSTM'])
+
+    # Initialize and train the selected model
+    if model_choice in models:
+        model = models[model_choice]
+        if model_choice != 'LSTM':
+            model.fit(X_train, y_train)
+    elif model_choice == 'LSTM':
+        model_filename = f"Model_SELECTED_COIN_{coin_index+1}/lstm_model.pkl"
+        if os.path.exists(model_filename):
+            model = tf.keras.models.load_model(model_filename)
+            # Reshape the input data for LSTM model
+            X_test_array = X_test.to_numpy().reshape(X_test.shape[0], X_test.shape[1], 1)
+            predictions = model.predict(X_test_array).flatten()
+        else:
+            st.error(f"No pre-trained LSTM model found for {coin_name}.")
+            return None, None, None, None
+    else:
+        st.error("Invalid model choice. Please choose from SVR, XGB, GBR, or LSTM.")
+        return None, None, None, None
+
+    return model, selected_data, X_test, y_test
+
+# Function to plot predictions and confidence intervals
+def plot_predictions(model, selected_data, X_test, y_test, coin_index):
+    if model is not None:
+        coin_name = selected_data.columns[coin_index]  # Get the name of the coin based on index
+        
+        # User input for frequency and number of periods (weeks, months, or quarters)
+        frequency = st.selectbox(f"Select frequency for {coin_name}", ['Daily', 'Weekly', 'Monthly', 'Quarterly']).lower()
+        num_periods = st.number_input(f"Enter the number of periods for {coin_name}", min_value=1, step=1)
+
+        # Make predictions for the specified number of periods
+        features = [f'{coin_name}_lag_{lag}' for lag in range(1, 4)]
+        X_array = selected_data[features].to_numpy()
+        predictions = model.predict(X_array[-num_periods:])  # Predictions for the last 'num_periods' rows
+
+        # Get the last date in the dataset
+        last_date = selected_data.index[-1]
+
+        # Generate periods for future predictions
+        if frequency == 'daily':
+            periods = pd.date_range(start=last_date, periods=num_periods, freq='D')
+        elif frequency == 'weekly':
+            periods = pd.date_range(start=last_date, periods=num_periods, freq='W')
+        elif frequency == 'monthly':
+            periods = pd.date_range(start=last_date, periods=num_periods, freq='M')
+        elif frequency == 'quarterly':
+            periods = pd.date_range(start=last_date, periods=num_periods, freq='Q')
+        else:
+            st.error("Invalid frequency. Please choose from 'daily', 'weekly', 'monthly', or 'quarterly'.")
+
+        # Plot average prices with confidence intervals
+        mse = mean_squared_error(y_test[-num_periods:], predictions)
+        st.write(f"Mean Squared Error for {coin_name}: {mse}")
+
+        # Creating a time series plot with predicted prices
+        st.subheader(f"Predicted Prices and Confidence Intervals for {coin_name} by {frequency}")
+        plt.figure(figsize=(10, 6))
+        plt.plot(periods, predictions, label='Predicted Price')
+        plt.title(f"Predicted Prices for {coin_name} by {frequency}")
+        plt.xlabel('Date')
+        plt.ylabel('Price')
+        plt.legend()
+        plt.grid(True)
+        st.pyplot()
+
+
 
 
     
@@ -948,26 +1715,188 @@ elif side_bars == "Visualizations":
         predicted_highs, predicted_lows = predict_highs_lows(data)
         
 elif side_bars == "Predictions":
-    st.write("You are on the Predictions page!")
-    st.header("About the Prediction Data")
-    st.write("The prediction data is from performing PCA to reduce dimentionality of the data with n_component of 10 and clustering the data with K-means into four clusters and selecting the best from each cluster using the centroid (You can visualize the selected data below)")
-     # Display selected data
-    if selected_data is not None:
-        if st.button("Display Selected Data"):
-            st.dataframe(selected_data)
+    prediction_selection = st.sidebar.radio('Selection:', ["Dataset", "Training Model Metrics", "Prediction Graphs"])
+    st.header("Prediction of Cryptocurrency Price")
+    if prediction_selection == "Dataset":
+        st.subheader("About the Prediction Data")
+        st.write("The prediction data is from performing PCA to reduce dimensionality of the data with n_component of 10 and clustering the data with K-means into four clusters and selecting the best from each cluster using the centroid (You can visualize the selected data below)")
+        # Display selected data
+        if selected_data is not None:
+            if st.button("Display Selected Data"):
+                st.dataframe(selected_data)
+            else:
+                st.write("Click the button above to display the selected data.")
         else:
-            st.write("Click the button above to display the selected data.")
-    else:
-        st.write("Selected data is not available. Please check the file path and data format.")
- 
-    st.write("Here you can make prediction and visualize forecast for the selected coins using one or all of the avaliable models\n 1. SVR\n 2. XGBoost\n 3. Gradient Boosting\n 4. LSTM")
-    display_selected(selected_data)
-   
-    
-    
-    
-    
+            st.write("Selected data is not available. Please check the file path and data format.")
+        st.write("Here you can make prediction and visualize forecast for the selected coins using one or all of the available models:\n 1. SVR\n 2. XGBoost\n 3. Gradient Boosting\n 4. LSTM")
+        display_selected(selected_data)
+    elif prediction_selection == "Training Model Metrics":
+        # Load the selected data from a CSV file
+        selected_data = pd.read_csv("Selected_coins.csv", index_col='Date')
+        # Streamlit app
+        st.title("Model Evaluation for Selected Coins")
+        # Select the coins to evaluate
+        coins = st.multiselect("Choose the coins you want to evaluate:", selected_data.columns)
+        # Select the model
+        chosen_model = st.selectbox("Choose the model you want to evaluate:", ['all', 'Gradient Boosting', 'SVR', 'XGBoost', 'LSTM'])
+        # Loop through selected coins and evaluate models
+        for coin in coins:
+            st.subheader(f"Evaluation for {coin}")
+            coin_index = selected_data.columns.get_loc(coin)
+            evaluate_models_selected_coin(selected_data, coin_index, chosen_model)
+    elif prediction_selection == "Prediction Graphs":
+        # Load the selected data from a CSV file
+        selected_data = pd.read_csv("Selected_coins.csv", index_col='Date')
+        # Show prediction graphs
+        coin_selection = st.selectbox("Choose the coin you want to visualize prediction graphs for:", selected_data.columns, key="coin_selection_prediction_graphs")
+        coin_index = selected_data.columns.get_loc(coin_selection)
+        model, selected_data, X_test, y_test = evaluate_models_coin(selected_data, coin_index)
+        if model is not None:
+            # Add a selectbox to choose the type of graph
+            graph_type = st.selectbox("Select type of graph:", ["Predicted Prices", "Confidence Intervals"])
+            # Plot the selected type of graph
+            if graph_type == "Predicted Prices":
+                plot_predictions(model, selected_data, X_test, y_test, coin_index)
+            elif graph_type == "Confidence Intervals":
+                plot_confidence_intervals(model, selected_data, X_test, y_test, coin_index)
 
+
+
+
+
+
+# elif side_bars == "Predictions":
+#     prediction_selection = st.sidebar.radio('Selection:',["Dataset","Training Model Metrics","Prediction Graphs"])
+#     st.header("Prediction of Cryptocurrency Price")
+    
+#     if prediction_selection == "Dataset":
+#         st.subheader("About the Prediction Data")
+#         st.write("The prediction data is from performing PCA to reduce dimensionality of the data with n_component of 10 and clustering the data with K-means into four clusters and selecting the best from each cluster using the centroid (You can visualize the selected data below)")
+
+#         # Display selected data
+#         if selected_data is not None:
+#             if st.button("Display Selected Data"):
+#                 st.dataframe(selected_data)
+#             else:
+#                 st.write("Click the button above to display the selected data.")
+#         else:
+#             st.write("Selected data is not available. Please check the file path and data format.")
+
+#         st.write("Here you can make prediction and visualize forecast for the selected coins using one or all of the available models:\n 1. SVR\n 2. XGBoost\n 3. Gradient Boosting\n 4. LSTM")
+#         display_selected(selected_data)
+    
+#     elif prediction_selection == "Training Model Metrics":
+#         # Load the selected data from a CSV file
+#         selected_data = pd.read_csv("Selected_coins.csv", index_col='Date')
+
+#         # Streamlit app
+#         st.title("Model Evaluation for Selected Coins")
+
+#         # Select the coins to evaluate
+#         coins = st.multiselect("Choose the coins you want to evaluate:", selected_data.columns)
+
+#         # Select the model
+#         chosen_model = st.selectbox("Choose the model you want to evaluate:", ['all', 'Gradient Boosting', 'SVR', 'XGBoost', 'LSTM'])
+
+#         # Loop through selected coins and evaluate models
+#         for coin in coins:
+#             st.subheader(f"Evaluation for {coin}")
+#             coin_index = selected_data.columns.get_loc(coin)
+#             evaluate_models_selected_coin(selected_data, coin_index, chosen_model)
+    
+# #     elif prediction_selection == "Prediction Graphs":
+# #         # Load the selected data from a CSV file
+# #         selected_data = pd.read_csv("Selected_coins.csv", index_col='Date')
+
+# #         if st.button("Show Prediction Graphs"):
+# #             coin_selection = st.selectbox("Choose the coin you want to visualize prediction graphs for:", 
+# #                                           selected_data.columns, key="coin_selection_prediction_graphs")
+
+# #             # Ensure each selectbox has a unique key
+# #             unique_key = f"coin_selection_prediction_graphs_{coin_selection}"
+
+# #             # Evaluate the model and plot predictions for the selected coin
+# #             coin_index = selected_data.columns.get_loc(coin_selection)
+# #             model, selected_data, X_test, y_test = evaluate_models_coin(selected_data, coin_index)
+# #             plot_predictions(model, selected_data, X_test, y_test, coin_index)
+#     elif prediction_selection == "Prediction Graphs":
+#         st.header("Prediction of Cryptocurrency Price")
+
+#         # Load the selected data from a CSV file
+#         selected_data = pd.read_csv("Selected_coins.csv", index_col='Date')
+
+#         # Loop through each coin index and evaluate models
+#         for i in range(4):
+#             # Evaluate the model and get the trained model, selected_data, X_test, and y_test for each coin
+#             model, selected_data, X_test, y_test = evaluate_models_coin(selected_data, i)
+
+#             # Plot predictions and confidence intervals for each coin
+#             plot_predictions(model, selected_data, X_test, y_test, i)
+
+
+            
+            
+           
+
+
+
+
+
+#         coin_selection = st.selectbox("Choose the coin you want to evaluate (or select 'all' for all coins)", 
+#                                       ['all', selected_data.columns[0], selected_data.columns[1], selected_data.columns[2], selected_data.columns[3]], key="coin_selection_selectbox")
+
+#         # Load the selected data from a CSV file
+#         selected_data = pd.read_csv("Selected_coins.csv", index_col='Date')
+
+#         if coin_selection != 'all':
+#             st.title(f"Model Evaluation for {coin_selection}")
+#             chosen_model = st.selectbox(f"Choose the model you want to evaluate for {coin_selection}", 
+#                                         ['all', 'Gradient Boosting', 'SVR', 'XGBoost', 'LSTM'], key=f"chosen_model_{coin_selection}_selectbox")
+            
+#             if st.sidebar.button("Show Metrics"):
+#                 if coin_selection == selected_data.columns[0]:
+#                     evaluate_models_selected_coin_1(selected_data, chosen_model)
+#                 elif coin_selection == selected_data.columns[1]:
+#                     evaluate_models_selected_coin_2(selected_data, chosen_model)
+#                 elif coin_selection == selected_data.columns[2]:
+#                     evaluate_models_selected_coin_3(selected_data, chosen_model)
+#                 elif coin_selection == selected_data.columns[3]:
+#                     evaluate_models_selected_coin_4(selected_data, chosen_model)
+#         else:
+#             st.title("Model Evaluation for All Coins")
+#             chosen_model = st.selectbox("Choose the model you want to evaluate for all coins", 
+#                                         ['all', 'Gradient Boosting', 'SVR', 'XGBoost', 'LSTM'], key="chosen_model_all_selectbox")
+            
+#             if st.sidebar.button("Show Metrics"):
+#                 for coin in selected_data.columns:
+#                     if coin == selected_data.columns[0]:
+#                         evaluate_models_selected_coin_1(selected_data, chosen_model)
+#                     elif coin == selected_data.columns[1]:
+#                         evaluate_models_selected_coin_2(selected_data, chosen_model)
+#                     elif coin == selected_data.columns[2]:
+#                         evaluate_models_selected_coin_3(selected_data, chosen_model)
+#                     elif coin == selected_data.columns[3]:
+#                         evaluate_models_selected_coin_4(selected_data, chosen_model)
+
+    
+#     elif prediction_selection == "Prediction Graphs":
+#         st.header("Prediction of Cryptocurrency Price")
+
+#         # Load the selected data from a CSV file
+#         selected_data = pd.read_csv("Selected_coins.csv", index_col='Date')
+
+#         # Loop through each coin index and evaluate models
+#         for i in range(4):
+#             # Evaluate the model and get the trained model, selected_data, X_test, and y_test for each coin
+#             model, selected_data, X_test, y_test = evaluate_models_coin(selected_data, i)
+
+#             # Plot predictions and confidence intervals for each coin
+#             plot_predictions(model, selected_data, X_test, y_test, i)
+
+
+    
+    
+    
         
 elif side_bars == 'NEWS':
     # Ask the user for the cryptocurrency they want to see news about
