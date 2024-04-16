@@ -5,7 +5,7 @@
 # ### Soligence App
 
 # In[ ]:
-
+import plotly.graph_objects as go
 import streamlit as st
 import os
 import numpy as np
@@ -98,21 +98,24 @@ def about_us():
         "most sophisticated AI predictions might not always be entirely accurate. Users relying solely on these "
         "predictions could face risks if market conditions change unexpectedly.")
 
-def dataset():
-    st.title("Crypto Dataset of Five Coins")
+    
+    
 
+def dataset():
+    
+    st.header("Crypto Dataset of Five Coins")
+    
     # Sidebar options
     st.sidebar.subheader("Dataset Options")
-
+    
     # Sorting
     sort_column = st.sidebar.multiselect("Sort by:", data.columns)
     ascending = st.sidebar.checkbox("Ascending")
     sorted_data = data.sort_values(by=sort_column, ascending=ascending)
 
     # Filtering
-    selected_crypto = st.sidebar.selectbox("Filter by cryptocurrency:", ["All"] + data['Crypto'].unique())
-    if "All" not in selected_crypto:
-        sorted_data = sorted_data[sorted_data['Crypto'].isin(selected_crypto)]
+    selected_crypto = st.sidebar.selectbox("Filter by cryptocurrency:", data['Crypto'].unique())
+    sorted_data = sorted_data[sorted_data['Crypto'].isin([selected_crypto])]
 
     # Pagination
     page_size = st.sidebar.number_input("Items per page:", min_value=1, value=10)
@@ -124,18 +127,17 @@ def dataset():
     # Display the dataset using a dataframe
     st.subheader("Dataset Overview")
     st.dataframe(paginated_data)
-
+    
     # Provide an option to show a table view
     show_table = st.checkbox("Show as Table")
-
+    
     # Display the dataset as a table if the checkbox is selected
     if show_table:
         st.subheader("Dataset Table View")
         st.table(paginated_data)
-        
 
 
-
+# plotting the average price trend    
 def plot_average_price_trend(data, interval):
     """
     Plot the average price trend of cryptocurrencies based on the specified interval.
@@ -257,8 +259,7 @@ def analyze_coin_correlation(data):
     st.write("Streamlit interface for analyzing and displaying the top four positively and negatively correlated cryptocurrencies with user-selected coins.")
 
     coins_list = data.columns.tolist()
-    st.write("Available coins:", ', '.join(coins_list))
-
+    
     coin_selected = st.selectbox("Select the coin you want to analyze:", coins_list)
 
     selected_coin_prices = data[coin_selected]
@@ -463,68 +464,57 @@ def plot_crypto_coins(data, coins, metric, start_date, end_date):
     plt.tight_layout()
     st.pyplot(plt)
 
-# def plot_candlestick_chart(coin='BTC-GBP', period='D'):
-#     st.subheader('Cryptocurrency Price Visualization by Interval')
-#     # Filter the DataFrame for the selected coin
-#     coin_data = data[data['Crypto'] == coin].copy()
 
-#     # Make sure the index is a DatetimeIndex
-#     coin_data.index = pd.to_datetime(coin_data.index)
 
-#     # Resample data based on the selected period
-#     if period.upper() == 'W':
-#         resampled_data = coin_data.resample('W').agg({'Open': 'first',
-#                                                       'High': 'max',
-#                                                       'Low': 'min',
-#                                                       'Close': 'last',
-#                                                       'Volume': 'sum'})
-#     elif period.upper() == 'M':
-#         resampled_data = coin_data.resample('M').agg({'Open': 'first',
-#                                                       'High': 'max',
-#                                                       'Low': 'min',
-#                                                       'Close': 'last',
-#                                                       'Volume': 'sum'})
-#     else:  # Default to daily data if period is not weekly or monthly
-#         resampled_data = coin_data
+# Candlestick and volumne of the data
 
-#     # Plotting
-#     st.title(f'{coin} {period.upper()} Candlestick Chart')
-#     fig, ax = plt.subplots()
-#     mpf.plot(resampled_data, type='candle', style='charles', ax=ax,
-#              title=f'{coin} {period.upper()} Candlestick Chart', warn_too_much_data=1000)
-#     st.pyplot(fig)
-
-def plot_candlestick_chart(data, coin='BTC-GBP', period='D'):
-    st.subheader('Cryptocurrency Price Visualization by Interval')
+def plot_candlestick_chart(coin='BTC-GBP', period='D'):
     # Filter the DataFrame for the selected coin
-    coin_data = data[data['Crypto'] == coin].copy()
-
+    coin_data = crypto_data[crypto_data['Crypto'] == coin].copy()
+    
     # Make sure the index is a DatetimeIndex
     coin_data.index = pd.to_datetime(coin_data.index)
-
+    
     # Resample data based on the selected period
     if period.upper() == 'W':
-        resampled_data = coin_data.resample('W').agg({'Open': 'first',
-                                                      'High': 'max',
-                                                      'Low': 'min',
-                                                      'Close': 'last',
+        resampled_data = coin_data.resample('W').agg({'Open': 'first', 
+                                                      'High': 'max', 
+                                                      'Low': 'min', 
+                                                      'Close': 'last', 
                                                       'Volume': 'sum'})
     elif period.upper() == 'M':
-        resampled_data = coin_data.resample('M').agg({'Open': 'first',
-                                                      'High': 'max',
-                                                      'Low': 'min',
-                                                      'Close': 'last',
+        resampled_data = coin_data.resample('M').agg({'Open': 'first', 
+                                                      'High': 'max', 
+                                                      'Low': 'min', 
+                                                      'Close': 'last', 
                                                       'Volume': 'sum'})
     else:  # Default to daily data if period is not weekly or monthly
         resampled_data = coin_data
 
     # Plotting
-    st.title(f'{coin} {period.upper()} Candlestick Chart')
-    fig, ax = plt.subplots()
-    mpf.plot(resampled_data, type='candle', style='charles', ax=ax,
-             warn_too_much_data=1000)
-    ax.set_title(f'{coin} {period.upper()} Candlestick Chart')
-    st.pyplot(fig)
+    fig = go.Figure(data=[go.Candlestick(x=resampled_data.index,
+                                         open=resampled_data['Open'],
+                                         high=resampled_data['High'],
+                                         low=resampled_data['Low'],
+                                         close=resampled_data['Close'],
+                                         name='Candlestick'),
+                          go.Bar(x=resampled_data.index,
+                                 y=resampled_data['Volume'],
+                                 name='Volume',
+                                 marker_color='rgba(0, 0, 0, 0.5)')])
+
+    fig.update_layout(title=f'{coin} {period.upper()} Chart',
+                      xaxis_title='Date',
+                      yaxis_title='Price',
+                      xaxis_rangeslider_visible=False)
+
+    st.plotly_chart(fig)
+
+
+
+
+
+
 
 
 
@@ -739,8 +729,57 @@ def get_top_crypto_news(crypto, num_stories=5):
 #             return None
 
 # selected_data = load_selected_data()
+import pandas as pd
+import numpy as np
+from sklearn.decomposition import PCA
+from sklearn.preprocessing import StandardScaler
+from sklearn.cluster import KMeans
 
+def generate_selected_data():
+    # Assuming 'crypto_data' is loaded and formatted correctly
+    crypto_data = pd.read_csv("Cleaned_combined_crypto_data.csv", index_col="Date", parse_dates=True)
     
+    # Pivot and preprocess the data
+    pivoted_data = crypto_data.pivot(columns='Crypto', values='Close')
+    pivoted_data.fillna(0, inplace=True)
+
+    # Standardize the data
+    scaler = StandardScaler()
+    scaled_data = scaler.fit_transform(pivoted_data)
+
+    # Perform PCA with a reasonable number of components
+    pca = PCA(n_components=10)  # Adjusted for example, consider your variance ratio to decide
+    pca_result = pca.fit_transform(scaled_data)
+
+    # Compute component loadings (transposed PCA components)
+    loadings = pd.DataFrame(pca.components_.T, columns=[f'PC{i}' for i in range(1, 11)], index=pivoted_data.columns)
+
+    # Perform K-means clustering on the loadings
+    kmeans = KMeans(n_clusters=4, random_state=0)
+    cluster_labels = kmeans.fit_predict(loadings)
+
+    # Assign cluster labels to the coins
+    loadings['Cluster'] = cluster_labels
+
+    # Select a representative coin from each cluster
+    representative_coins = pd.DataFrame()
+    for i in range(4):
+        cluster = loadings[loadings['Cluster'] == i]
+        # Calculate the distance to the cluster center
+        center = kmeans.cluster_centers_[i]
+        cluster['distance_to_center'] = cluster.apply(lambda x: np.linalg.norm(x[:-1] - center), axis=1)
+        # Append the coin with the minimum distance to the center
+        representative_coins = representative_coins.append(cluster.loc[cluster['distance_to_center'].idxmin()])
+
+    # Extract the selected coins based on the index of representative_coins
+    selected_data = pivoted_data[representative_coins.index]
+
+    # Save the selected data to a CSV file
+    selected_data.to_csv("Selected_coins.csv")
+
+    return selected_data
+selected_data = generate_selected_data()  
+
 def display_selected(selected_data):
     st.title("Boxplot of the 4 selected coins from K-mean clustering")
     # selected_data = load_data()  # Assuming load_data() loads your DataFrame
@@ -2027,7 +2066,236 @@ def plot_predictions_4(model, selected_data, X_test, y_test):
         st.pyplot(fig)
 
 
+# predicting Buy and selling
+import pandas as pd
+import numpy as np
+import streamlit as st
+import plotly.graph_objects as go
+from ta.trend import SMAIndicator
+from datetime import datetime, timedelta
 
+# def apply_ma_trading_strategy(selected_data, chosen_coin):
+#     # Drop rows with missing 'Close' prices
+#     selected_data.dropna(subset=[chosen_coin], inplace=True)
+
+#     # Convert index to offset-naive datetime index
+#     selected_data.index = selected_data.index.tz_localize(None)
+
+#     # Calculate moving averages
+#     ma_7 = 7  # 7-day moving average
+#     ma_14 = 14  # 14-day moving average
+#     selected_data[f'MA_{ma_7}'] = SMAIndicator(close=selected_data[chosen_coin], window=ma_7).sma_indicator()
+#     selected_data[f'MA_{ma_14}'] = SMAIndicator(close=selected_data[chosen_coin], window=ma_14).sma_indicator()
+
+#     # Generate buy and sell signals based on moving averages
+#     selected_data['Buy_Signal'] = np.where(selected_data[f'MA_{ma_7}'] > selected_data[f'MA_{ma_14}'].shift(1), 1, 0)
+#     selected_data['Sell_Signal'] = np.where(selected_data[f'MA_{ma_7}'] < selected_data[f'MA_{ma_14}'].shift(1), -1, 0)
+
+#     # Calculate profit/loss based on trading signals
+#     total_profit_loss = calculate_profit_loss(selected_data, chosen_coin)
+
+#     # Create figure with secondary y-axis
+#     fig = go.Figure()
+
+#     # Add traces
+#     fig.add_trace(go.Scatter(x=selected_data.index, y=selected_data[chosen_coin], name='Close Price', line=dict(color='blue')))
+#     fig.add_trace(go.Scatter(x=selected_data.index, y=selected_data[f'MA_{ma_7}'], name=f'{ma_7}-day MA', line=dict(color='green')))
+#     fig.add_trace(go.Scatter(x=selected_data.index, y=selected_data[f'MA_{ma_14}'], name=f'{ma_14}-day MA', line=dict(color='red')))
+#     fig.add_trace(go.Scatter(x=selected_data[selected_data['Buy_Signal'] == 1].index, y=selected_data[selected_data['Buy_Signal'] == 1][chosen_coin],
+#                              mode='markers', marker=dict(color='green', size=10, symbol='triangle-up'), name='Buy Signal'))
+#     fig.add_trace(go.Scatter(x=selected_data[selected_data['Sell_Signal'] == -1].index, y=selected_data[selected_data['Sell_Signal'] == -1][chosen_coin],
+#                              mode='markers', marker=dict(color='red', size=10, symbol='triangle-down'), name='Sell Signal'))
+    
+#     # Current price line
+#     current_price = selected_data[chosen_coin].iloc[-1]
+#     fig.add_trace(go.Scatter(x=[selected_data.index[0], selected_data.index[-1]], y=[current_price, current_price],
+#                              mode='lines', line=dict(color='gray', dash='dash'), name='Current Price'))
+
+#     # Update layout to increase figure size
+#     fig.update_layout(
+#         title=f'Moving Average Trading Strategy for {chosen_coin}',
+#         xaxis_title='Date',
+#         yaxis_title='Price',
+#         legend=dict(yanchor="top", y=0.99, xanchor="left", x=0.01),
+#         width=1000,  # Set the width of the figure
+#         height=600   # Set the height of the figure
+#     )
+
+#     # Display plotly figure using Streamlit
+#     st.plotly_chart(fig)
+
+#     st.write(f"Current Price of {chosen_coin} is {current_price}")
+
+#     return selected_data, total_profit_loss
+
+# def calculate_profit_loss(data, coin):
+#     # Initialize variables
+#     position = 0  # 0: no position, 1: long position, -1: short position
+#     entry_price = 0
+#     profit_loss = []
+
+#     # Iterate over rows
+#     for index, row in data.iterrows():
+#         if row['Buy_Signal'] == 1 and position != 1:  # Buy signal
+#             if position == -1:  # Close short position
+#                 profit_loss.append(entry_price - row[coin])
+#             position = 1  # Enter long position
+#             entry_price = row[coin]
+#         elif row['Sell_Signal'] == -1 and position != -1:  # Sell signal
+#             if position == 1:  # Close long position
+#                 profit_loss.append(row[coin] - entry_price)
+#             position = -1  # Enter short position
+#             entry_price = row[coin]
+
+#     # Close any remaining position at the end
+#     if position == 1:
+#         profit_loss.append(data.iloc[-1][coin] - entry_price)
+#     elif position == -1:
+#         profit_loss.append(entry_price - data.iloc[-1][coin])
+
+#     return sum(profit_loss)
+
+# def forecast_price(selected_data, chosen_coin, num_days):
+#     future_date = datetime.now() + timedelta(days=num_days)
+#     future_date = future_date.replace(tzinfo=None)
+
+#     if future_date > selected_data.index[-1]:
+#         # Extend the index
+#         new_index = pd.date_range(start=selected_data.index[0], end=future_date, freq='D')
+#         extended_data = selected_data.reindex(new_index, method='ffill')
+
+#         # Recalculate MAs for the extended period
+#         extended_data[f'MA_{7}'] = SMAIndicator(close=extended_data[chosen_coin], window=7).sma_indicator()
+#         extended_data[f'MA_{14}'] = SMAIndicator(close=extended_data[chosen_coin], window=14).sma_indicator()
+
+#         # Forecast using the latest MA values
+#         future_price = (extended_data[f'MA_{7}'].iloc[-1] + extended_data[f'MA_{14}'].iloc[-1]) / 2
+#         return future_price, future_date
+#     else:
+#         st.write("Future date is within the available data range.")
+#         return None, None
+
+# def determine_best_time_to_trade_future(selected_data, chosen_coin):
+#     selected_data, total_profit_loss = apply_ma_trading_strategy(selected_data, chosen_coin)
+
+#     num_days = st.number_input("Enter the number of days for forecasting ahead:", min_value=1, step=1)
+#     future_price, future_date = forecast_price(selected_data, chosen_coin, num_days)
+
+#     if future_price is not None:
+#         action = "Buy" if future_price > selected_data[chosen_coin].iloc[-1] else "Sell"
+#         st.write(f"Recommended action: {action}")
+#         st.write(f"Forecasted price for {future_date.date()}: {future_price}")
+#     else:
+#         st.write("Unable to forecast price for the future.")
+
+#     return selected_data, total_profit_loss
+
+
+# trying
+import streamlit as st
+import pandas as pd
+import numpy as np
+import plotly.graph_objects as go
+from ta.trend import SMAIndicator
+from datetime import datetime, timedelta
+
+# Function to apply MA Trading Strategy and display chart
+def determine_best_time_to_trade_future(selected_data, chosen_coin, num_days):
+    # Apply MA trading strategy
+    total_profit_loss = apply_ma_trading_strategy(selected_data, chosen_coin)
+
+    # Forecast future price
+    future_price, future_date = forecast_price(selected_data, chosen_coin, num_days)
+
+    if future_price is not None:
+        action = "Buy" if future_price > selected_data[chosen_coin].iloc[-1] else "Sell"
+        st.write(f"Recommended action: {action}")
+        st.write(f"Forecasted price for {future_date.date()}: {future_price}")
+    else:
+        st.write("Unable to forecast price for the future.")
+
+    return total_profit_loss
+
+# Function to apply MA Trading Strategy and display chart
+def apply_ma_trading_strategy(selected_data, chosen_coin):
+    # Drop rows with missing 'Close' prices
+    selected_data.dropna(subset=[chosen_coin], inplace=True)
+
+    # Convert index to offset-naive datetime index
+    selected_data.index = selected_data.index.tz_localize(None)
+
+    # Calculate moving averages
+    ma_7 = 7  # 7-day moving average
+    ma_14 = 14  # 14-day moving average
+    selected_data[f'MA_{ma_7}'] = SMAIndicator(close=selected_data[chosen_coin], window=ma_7).sma_indicator()
+    selected_data[f'MA_{ma_14}'] = SMAIndicator(close=selected_data[chosen_coin], window=ma_14).sma_indicator()
+
+    # Generate buy and sell signals based on moving averages
+    selected_data['Buy_Signal'] = np.where(selected_data[f'MA_{ma_7}'] > selected_data[f'MA_{ma_14}'].shift(1), 1, 0)
+    selected_data['Sell_Signal'] = np.where(selected_data[f'MA_{ma_7}'] < selected_data[f'MA_{ma_14}'].shift(1), -1, 0)
+
+    # Create plotly figure
+    fig = go.Figure()
+
+    # Add traces
+    fig.add_trace(go.Scatter(x=selected_data.index, y=selected_data[chosen_coin], name='Close Price', line=dict(color='blue')))
+    fig.add_trace(go.Scatter(x=selected_data.index, y=selected_data[f'MA_{ma_7}'], name=f'{ma_7}-day MA', line=dict(color='green')))
+    fig.add_trace(go.Scatter(x=selected_data.index, y=selected_data[f'MA_{ma_14}'], name=f'{ma_14}-day MA', line=dict(color='red')))
+    fig.add_trace(go.Scatter(x=selected_data[selected_data['Buy_Signal'] == 1].index, y=selected_data[selected_data['Buy_Signal'] == 1][chosen_coin],
+                             mode='markers', marker=dict(color='green', size=10, symbol='triangle-up'), name='Buy Signal'))
+    fig.add_trace(go.Scatter(x=selected_data[selected_data['Sell_Signal'] == -1].index, y=selected_data[selected_data['Sell_Signal'] == -1][chosen_coin],
+                             mode='markers', marker=dict(color='red', size=10, symbol='triangle-down'), name='Sell Signal'))
+    
+    # Current price line
+    current_price = selected_data[chosen_coin].iloc[-1]
+    fig.add_trace(go.Scatter(x=[selected_data.index[0], selected_data.index[-1]], y=[current_price, current_price],
+                             mode='lines', line=dict(color='gray', dash='dash'), name='Current Price'))
+
+    # Update layout
+    fig.update_layout(
+        title=f'Moving Average Trading Strategy for {chosen_coin}',
+        xaxis_title='Date',
+        yaxis_title='Price',
+        legend=dict(yanchor="top", y=0.99, xanchor="left", x=0.01),
+        width=1000,
+        height=600
+    )
+
+    # Display plotly figure
+    st.plotly_chart(fig)
+
+    st.write(f"Current Price of {chosen_coin} is {current_price}")
+
+    return selected_data
+
+# Function to forecast future price
+def forecast_price(selected_data, chosen_coin, num_days):
+    future_date = datetime.now() + timedelta(days=num_days)
+    future_date = future_date.replace(tzinfo=None)
+
+    if future_date > selected_data.index[-1]:
+        # Extend the index
+        new_index = pd.date_range(start=selected_data.index[0], end=future_date, freq='D')
+        extended_data = selected_data.reindex(new_index, method='ffill')
+
+        # Recalculate MAs for the extended period
+        extended_data[f'MA_{7}'] = SMAIndicator(close=extended_data[chosen_coin], window=7).sma_indicator()
+        extended_data[f'MA_{14}'] = SMAIndicator(close=extended_data[chosen_coin], window=14).sma_indicator()
+
+        # Forecast using the latest MA values
+        future_price = (extended_data[f'MA_{7}'].iloc[-1] + extended_data[f'MA_{14}'].iloc[-1]) / 2
+        return future_price, future_date
+    else:
+        st.write("Future date is within the available data range.")
+        return None, None
+
+# # Main function to run the Streamlit app
+# def main():
+    
+
+# # Run the Streamlit app
+# if __name__ == "__main__":
+#     main()
 
 
 
@@ -2107,26 +2375,44 @@ elif side_bars == "Visualizations":
 
 
     elif visualization_option == 'Candlestick Chart':
-#         # User input for visualization
-#         coin_visualization = st.sidebar.selectbox("Select a coin for visualization:", data['Crypto'].unique(), index=0)
-#         period_visualization = st.sidebar.selectbox("Select period for visualization:", ['D', 'W', 'M'], index=0)
-
-#         # Plot the selected cryptocurrency chart
-#         if st.sidebar.button("Plot Cryptocurrency Chart"):
-#             plot_candlestick_chart(coin_visualization, period_visualization)
+        crypto_data = pd.read_csv("Cleaned_combined_crypto_data.csv", index_col='Date')
         # User input for coin and period
-        available_coins = data['Crypto'].unique()
-        coin = st.sidebar.selectbox("Select a coin symbol:", available_coins, index=0)
-        period = st.sidebar.selectbox("Select a period:", ['Daily', 'Weekly', 'Monthly'], index=0)
+        available_coins = crypto_data['Crypto'].unique()
+        coin = st.selectbox("Select coin", available_coins)
+        period_labels = ("Daily", "Weekly", "Monthly")
+        period_values = ('D', 'W', 'M')
+        period_index = st.radio("Select period", period_labels)
+        period = period_values[period_labels.index(period_index)]
 
-        if period == 'Daily':
-            period = 'D'
-        elif period == 'Weekly':
-            period = 'W'
-        elif period == 'Monthly':
-            period = 'M'
+        plot_candlestick_chart(coin, period)
+#         # User input for coin and period
+#         available_coins = crypto_data['Crypto'].unique()
+#         coin = st.selectbox("Select coin", available_coins)
+#         period = st.radio("Select period", ('D', 'W', 'M'))
 
-        plot_candlestick_chart(data, coin, period)
+#         plot_crypto_chart(coin, period)
+
+
+# #         # User input for visualization
+# #         coin_visualization = st.sidebar.selectbox("Select a coin for visualization:", data['Crypto'].unique(), index=0)
+# #         period_visualization = st.sidebar.selectbox("Select period for visualization:", ['D', 'W', 'M'], index=0)
+
+# #         # Plot the selected cryptocurrency chart
+# #         if st.sidebar.button("Plot Cryptocurrency Chart"):
+# #             plot_candlestick_chart(coin_visualization, period_visualization)
+#         # User input for coin and period
+#         available_coins = data['Crypto'].unique()
+#         coin = st.sidebar.selectbox("Select a coin symbol:", available_coins, index=0)
+#         period = st.sidebar.selectbox("Select a period:", ['Daily', 'Weekly', 'Monthly'], index=0)
+
+#         if period == 'Daily':
+#             period = 'D'
+#         elif period == 'Weekly':
+#             period = 'W'
+#         elif period == 'Monthly':
+#             period = 'M'
+
+#         plot_candlestick_chart(data, coin, period)
 
 
             
@@ -2137,7 +2423,7 @@ elif side_bars == "Visualizations":
         predicted_highs, predicted_lows = predict_highs_lows(data)
         
 elif side_bars == "Predictions":
-    prediction_selection = st.sidebar.radio('Selection:', ["Dataset", "Training Model Metrics", "Prediction Graphs"])
+    prediction_selection = st.sidebar.radio('Selection:', ["Dataset", "Training Model Metrics", "Prediction Graphs","Buy and Sell Prediction"])
     st.header("Prediction of Cryptocurrency Price")
     if prediction_selection == "Dataset":
         st.subheader("About the Prediction Data")
@@ -2216,7 +2502,30 @@ elif side_bars == "Predictions":
         else:
             st.write("Click the button above to display the visualization of the prediction of the selected coin.")
     
+    elif prediction_selection == "Buy and Sell Prediction":
+        st.title("Moving Average Trading Strategy")
+
+        # Load data
+        selected_data = pd.read_csv("Selected_coins.csv", parse_dates=['Date'], index_col='Date')
+
+        # Sidebar for selecting coin and input for number of days
         
+        chosen_coin = st.sidebar.selectbox("Choose the coins you want to evaluate:", selected_data.columns)
+        num_days = st.sidebar.number_input("Enter the number of days for forecasting ahead:", min_value=1, step=1)
+
+        # Button to apply MA Trading Strategy
+        if st.sidebar.button("Apply MA Trading Strategy"):
+            # Call function to apply MA Trading Strategy and display chart
+            result_data = determine_best_time_to_trade_future(selected_data, chosen_coin, num_days)
+            
+            st.subheader("Buy/Sell Prediction Data")
+            st.write(result_data)
+
+
+
+
+            
+            
 elif side_bars == 'NEWS':
     # Ask the user for the cryptocurrency they want to see news about
     chosen_crypto = st.text_input("Enter the cryptocurrency you want to see news about:", "Bitcoin").strip().upper()
