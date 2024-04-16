@@ -1,16 +1,16 @@
-#!/usr/bin/env python
-# coding: utf-8
-
-# 
-# ### Soligence App
-
-# In[ ]:
-import plotly.graph_objects as go
-import streamlit as st
-import os
+# importing necceassary modules 
+import pandas as pd
 import numpy as np
+import streamlit as st
+import plotly.graph_objects as go
+from ta.trend import SMAIndicator
+from datetime import datetime, timedelta
+from sklearn.preprocessing import StandardScaler
+from sklearn.decomposition import PCA  # Adding PCA import
+from sklearn.cluster import KMeans
+import os
 import matplotlib.pyplot as plt
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn.ensemble import GradientBoostingRegressor
 from sklearn.svm import SVR
 from xgboost import XGBRegressor
@@ -18,26 +18,20 @@ from keras.models import Sequential, load_model
 from keras.layers import LSTM, Dense
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 import joblib
-import pandas as pd
-import matplotlib.pyplot as plt
-from sklearn.linear_model import LinearRegression
-import numpy as np
 import mplfinance as mpf
-from datetime import datetime
 import matplotlib.dates as mdates
 import feedparser
-from sklearn.model_selection import train_test_split, GridSearchCV
-from sklearn.ensemble import GradientBoostingRegressor
-from sklearn.svm import SVR
-from xgboost import XGBRegressor
-from keras.models import Sequential
-from keras.layers import LSTM, Dense
+from sklearn.linear_model import LinearRegression
 from sklearn.impute import SimpleImputer
-from sklearn.metrics import mean_squared_error
+import tensorflow as tf
+import itertools
 
 # Load cryptocurrency price data
 data = pd.read_csv('Cleaned_combined_crypto_data.csv')
 selected_data = pd.read_csv("Selected_coins.csv", index_col='Date')
+
+# building functions for use in the app
+# home page
 
 def home_section():
     st.title("SOLiGence")
@@ -81,6 +75,7 @@ def home_section():
         st.write("Privacy Policy | Disclaimer")
 
 
+# about the app
 
 def about_us():
     st.title("About Solent Intelligence Ltd.")
@@ -99,7 +94,7 @@ def about_us():
         "predictions could face risks if market conditions change unexpectedly.")
 
     
-    
+# dataset page    
 
 def dataset():
     
@@ -222,16 +217,7 @@ def plot_boxplot(data, coin):
     plt.tight_layout()
     st.pyplot(plt)
 
-
-    
-
-# Example usage:
-# Assuming 'data' is your DataFrame containing cryptocurrency data with 'Crypto' as the column for coin names
-# Replace 'data' with your actual DataFrame name
-# Replace 'BTC-GBP' with the cryptocurrency symbol (coin name) you want to plot
-
-
-    
+ 
     
 
 def pivot_data(data):
@@ -328,57 +314,6 @@ def plot_moving_average(crypto_data):
         
 
 
-# def plot_crypto_prices_visualization(data, compare_option, coins, metrics, start_date, end_date):
-#     """
-#     Plots the price metrics of selected cryptocurrencies over a specified interval, with optional comparisons.
-
-#     Parameters:
-#     - compare_option (str): Option for comparison. Can be 'coins' to compare metrics between coins, 'metrics' to compare within a coin, or 'none' for no comparison.
-#     - coins (list): List of cryptocurrencies to plot.
-#     - metrics (list): List of price metrics to plot (e.g., 'Close', 'Open', 'High', 'Low', 'Volume').
-#     - start_date (str): Start date of the interval in 'YYYY-MM-DD' format.
-#     - end_date (str): End date of the interval in 'YYYY-MM-DD' format.
-#     """
-#     # Convert start date and end date strings to datetime objects
-#     start_date = datetime.strptime(start_date, '%Y-%m-%d')
-#     end_date = datetime.strptime(end_date, '%Y-%m-%d')
-
-#     st.title('Explore historical cryptocurrency prices.')
-#     st.header('Cryptocurrency Price Metrics Visualization')
-#     st.write("Plots the price metrics of selected cryptocurrencies over a specified interval, with optional comparisons")
-
-#     # Filter data for the selected coins and interval
-#     selected_data = data[(data['Crypto'].isin(coins)) & (data.index >= pd.to_datetime(start_date)) & (data.index <= pd.to_datetime(end_date))]
-
-#     # Plot the selected price metrics
-#     plt.figure(figsize=(12, 6))
-
-#     if compare_option == 'coins':
-#         for metric in metrics:
-#             for coin in coins:
-#                 coin_data = selected_data[selected_data['Crypto'] == coin]
-#                 plt.plot(coin_data.index, coin_data[metric], label=f"{coin} {metric}")
-#     elif compare_option == 'metrics':
-#         for coin in coins:
-#             for metric in metrics:
-#                 coin_data = selected_data[selected_data['Crypto'] == coin]
-#                 plt.plot(coin_data.index, coin_data[metric], label=f"{coin} {metric}")
-#     else:
-#         for coin in coins:
-#             for metric in metrics:
-#                 coin_data = selected_data[selected_data['Crypto'] == coin]
-#                 plt.plot(coin_data.index, coin_data[metric], label=f"{coin} {metric}")
-
-#     # Add labels and title
-#     plt.title('Cryptocurrency Prices Over Time')
-#     plt.xlabel('Date')
-#     plt.ylabel('Price/Volume')
-#     plt.xticks(rotation=45)
-#     plt.legend()
-#     plt.grid(True)
-
-#     # Show plot
-#     st.pyplot(plt)
 
 #first metric
 
@@ -510,76 +445,7 @@ def plot_candlestick_chart(coin='BTC-GBP', period='D'):
 
     st.plotly_chart(fig)
 
-
-
-
-
-
-
-
-
-# # Example usage
-# import plotly.graph_objects as go
-
-# def plot_candlestick_chart(data, coin='BTC-GBP', period='D'):
-#     st.subheader('Cryptocurrency Price Visualization by Interval')
-    
-#     # Filter the DataFrame for the selected coin
-#     coin_data = data[data['Crypto'] == coin].copy()
-
-#     # Make sure the index is a DatetimeIndex
-#     coin_data.index = pd.to_datetime(coin_data.index)
-
-#     # Resample data based on the selected period
-#     if period.upper() == 'W':
-#         resampled_data = coin_data.resample('W').agg({'Open': 'first',
-#                                                       'High': 'max',
-#                                                       'Low': 'min',
-#                                                       'Close': 'last',
-#                                                       'Volume': 'sum'})
-#     elif period.upper() == 'M':
-#         resampled_data = coin_data.resample('M').agg({'Open': 'first',
-#                                                       'High': 'max',
-#                                                       'Low': 'min',
-#                                                       'Close': 'last',
-#                                                       'Volume': 'sum'})
-#     else:  # Default to daily data if period is not weekly or monthly
-#         resampled_data = coin_data
-
-#     # Create candlestick chart
-#     fig = go.Figure(data=[go.Candlestick(x=resampled_data.index,
-#                                          open=resampled_data['Open'],
-#                                          high=resampled_data['High'],
-#                                          low=resampled_data['Low'],
-#                                          close=resampled_data['Close'])])
-
-#     # Add volume bars
-#     fig.add_trace(go.Bar(x=resampled_data.index,
-#                          y=resampled_data['Volume'],
-#                          marker_color='rgba(0, 0, 255, 0.5)',
-#                          opacity=0.5,
-#                          name='Volume',
-#                          secondary_y=True))  # Set secondary_y to True for volume bars
-
-#     # Update figure layout
-#     fig.update_layout(title=f'{coin} {period.upper()} Candlestick Chart',
-#                       xaxis_title='Date',
-#                       yaxis_title='Price',
-#                       template='plotly_dark')
-
-#     # Show plot
-#     st.plotly_chart(fig)
-
-
-
-# Example usage
-# Assuming 'data' is your DataFrame with cryptocurrency data
-# Make sure to load data before using this function
-# You can use st.cache() to load the data once and cache it
-# data = load_data()
-
-
-
+# visualizing market state
 
 def visualize_market_state(data):
     """
@@ -679,10 +545,7 @@ def predict_highs_lows(data):
 
     return predicted_highs_df, predicted_lows_df
     
-    
-    
-import feedparser
-import streamlit as st
+# getting crypto news by scrapping        
 
 def get_top_crypto_news(crypto, num_stories=5):
     # URL of the RSS feed from Cryptoslate
@@ -718,22 +581,7 @@ def get_top_crypto_news(crypto, num_stories=5):
         st.write(f"No news found for {crypto}.")
 
 
-        
-# # Load and preprocess data
-# def load_selected_data():
-#         try:
-#             selected_data = pd.read_csv("Selected_coins.csv", index_col='Date')
-#             return selected_data
-#         except FileNotFoundError:
-#             st.error("Failed to load selected data. File not found.")
-#             return None
-
-# selected_data = load_selected_data()
-import pandas as pd
-import numpy as np
-from sklearn.decomposition import PCA
-from sklearn.preprocessing import StandardScaler
-from sklearn.cluster import KMeans
+# generating the four coins from through pca and clustering
 
 def generate_selected_data():
     # Assuming 'crypto_data' is loaded and formatted correctly
@@ -801,11 +649,7 @@ def display_selected(selected_data):
     st.pyplot(fig)
 
 
-    
-    
-
-import itertools
-
+# plotting the four coins against each other to see their relationships     
 
 def plot_coin_scatter(selected_data):
     # Get all combinations of coins
@@ -825,634 +669,7 @@ def plot_coin_scatter(selected_data):
 
 
 
-# # the first coin models
-
-# def evaluate_models_selected_coin_1(selected_data, chosen_model='all'):
-#     # Making a copy of the slice to ensure it's a separate object
-#     selected_data = selected_data.copy()
-
-#     for lag in range(1, 4):  # Adding lagged features for 1 to 3 days
-#          selected_data.loc[:, f'{selected_data.columns[0]}_lag_{lag}'] = selected_data[selected_data.columns[0]].shift(lag)
-
-#     # Dropping rows with NaN values created due to shifting
-#     selected_data.dropna(inplace=True)
-
-#     # Features will be the lagged values, and the target will be the current price of the first coin
-#     features = [f'{selected_data.columns[0]}_lag_{lag}' for lag in range(1, 4)]
-#     X = selected_data[features]
-#     y = selected_data[selected_data.columns[0]]
-
-#     # Splitting the dataset into training and testing sets
-#     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-
-#     # Initialize dictionary to hold models
-#     models = {
-#         'GRADIENT BOOSTING': GradientBoostingRegressor(),
-#         'SVR': SVR(),
-#         'XGBOOST': XGBRegressor(),
-#         'LSTM': Sequential([LSTM(units=50, input_shape=(X_train.shape[1], 1)), Dense(units=1)])
-#     }
-
-#     eval_metrics = {}
-
-#     if chosen_model.lower() == 'all':
-#         chosen_models = models.keys()
-#     else:
-#         chosen_models = [chosen_model.upper()]  # Capitalize input for case insensitivity
-
-#     for model_name in chosen_models:
-#         if model_name not in models:
-#             print(f"Model '{model_name}' not found. Skipping...")
-#             continue
-
-#         model = models[model_name]
-
-#         if model_name == 'LSTM':
-#             model_filename = "Model_SELECTED_COIN_1//lstm_model.pkl"
-#             if os.path.exists(model_filename):
-#                 model = load_model(model_filename)
-#                 # Reshape the input data for LSTM model
-#                 X_test_array = X_test.to_numpy().reshape(X_test.shape[0], X_test.shape[1], 1)
-#                 predictions = model.predict(X_test_array).flatten()
-#             else:
-#                 print("No pre-trained LSTM model found.")
-#                 continue  # Skip the rest of the loop if LSTM model not found
-#         else:
-#             model.fit(X_train, y_train)  # Fit the model
-#             predictions = model.predict(X_test)
-
-#         # Calculate evaluation metrics
-#         mae = mean_absolute_error(y_test, predictions)
-#         mse = mean_squared_error(y_test, predictions)
-#         rmse = np.sqrt(mse)
-#         mape = np.mean(np.abs((y_test - predictions) / y_test)) * 100
-#         r2 = r2_score(y_test, predictions)
-
-#         # Store evaluation metrics
-#         eval_metrics[model_name] = {'MAE': mae, 'MSE': mse, 'RMSE': rmse, 'MAPE': mape, 'R2': r2}
-
-#     # Display evaluation metrics
-#     st.subheader("Evaluation Metrics")
-#     for model_name, metrics in eval_metrics.items():
-#         st.write(f"Evaluation metrics for {model_name}:")
-#         for metric_name, value in metrics.items():
-#             st.write(f"{metric_name}: {value}")
-#         st.write()
-
-#     # Plot evaluation metrics
-#     if eval_metrics:
-#         st.subheader("Evaluation Metric Visualization")
-#         fig, ax = plt.subplots(figsize=(12, 6))
-
-#         metrics = list(eval_metrics.keys())
-#         mae_values = [eval_metrics[model]['MAE'] for model in metrics]  # Corrected access to values
-#         mse_values = [eval_metrics[model]['MSE'] for model in metrics]  # Corrected access to values
-#         rmse_values = [eval_metrics[model]['RMSE'] for model in metrics]  # Corrected access to values
-
-#         bar_width = 0.15  # Increased bar width
-#         index = np.arange(len(metrics))
-
-#         bar1 = ax.bar(index - 2*bar_width, mae_values, bar_width, label='MAE')  # Adjusted positions for bars
-#         bar2 = ax.bar(index - bar_width, mse_values, bar_width, label='MSE')   # Adjusted positions for bars
-#         bar3 = ax.bar(index, rmse_values, bar_width, label='RMSE')              # Adjusted positions for bars
-
-#         ax.set_xlabel('Models')
-#         ax.set_ylabel('Metrics')
-#         ax.set_title(f'Evaluation Metrics for {selected_data.columns[0]} using {chosen_model.upper()} as the Models')
-#         ax.set_xticks(index)
-#         ax.set_xticklabels(metrics)
-#         ax.legend()
-
-#         # Annotate bars with values
-#         for bars in [bar1, bar2, bar3]:
-#             for bar in bars:
-#                 height = bar.get_height()
-#                 ax.annotate('{}'.format(round(height, 2)),
-#                             xy=(bar.get_x() + bar.get_width() / 2, height),
-#                             xytext=(0, 3),  # 3 points vertical offset
-#                             textcoords="offset points",
-#                             ha='center', va='bottom')
-
-#         st.pyplot(fig)
-#     else:
-#         st.write("No models were evaluated.")
-        
-# # second coin
-
-# def evaluate_models_selected_coin_2(selected_data, chosen_model='all'):
-#     # Making a copy of the slice to ensure it's a separate object
-#     selected_data = selected_data.copy()
-
-#     for lag in range(1, 4):  # Adding lagged features for 1 to 3 days
-#          selected_data.loc[:, f'{selected_data.columns[1]}_lag_{lag}'] = selected_data[selected_data.columns[1]].shift(lag)
-
-#     # Dropping rows with NaN values created due to shifting
-#     selected_data.dropna(inplace=True)
-
-#     # Features will be the lagged values, and the target will be the current price of the first coin
-#     features = [f'{selected_data.columns[1]}_lag_{lag}' for lag in range(1, 4)]
-#     X = selected_data[features]
-#     y = selected_data[selected_data.columns[1]]
-
-#     # Splitting the dataset into training and testing sets
-#     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-
-#     # Initialize dictionary to hold models
-#     models = {
-#         'GRADIENT BOOSTING': GradientBoostingRegressor(),
-#         'SVR': SVR(),
-#         'XGBOOST': XGBRegressor(),
-#         'LSTM': Sequential([LSTM(units=50, input_shape=(X_train.shape[1], 1)), Dense(units=1)])
-#     }
-
-#     eval_metrics = {}
-
-#     if chosen_model.lower() == 'all':
-#         chosen_models = models.keys()
-#     else:
-#         chosen_models = [chosen_model.upper()]  # Capitalize input for case insensitivity
-
-#     for model_name in chosen_models:
-#         if model_name not in models:
-#             print(f"Model '{model_name}' not found. Skipping...")
-#             continue
-
-#         model = models[model_name]
-
-#         if model_name == 'LSTM':
-#             model_filename = "Model_SELECTED_COIN_2//lstm_model.pkl"
-#             if os.path.exists(model_filename):
-#                 model = load_model(model_filename)
-#                 # Reshape the input data for LSTM model
-#                 X_test_array = X_test.to_numpy().reshape(X_test.shape[0], X_test.shape[1], 1)
-#                 predictions = model.predict(X_test_array).flatten()
-#             else:
-#                 print("No pre-trained LSTM model found.")
-#                 continue  # Skip the rest of the loop if LSTM model not found
-#         else:
-#             model.fit(X_train, y_train)  # Fit the model
-#             predictions = model.predict(X_test)
-
-#         # Calculate evaluation metrics
-#         mae = mean_absolute_error(y_test, predictions)
-#         mse = mean_squared_error(y_test, predictions)
-#         rmse = np.sqrt(mse)
-#         mape = np.mean(np.abs((y_test - predictions) / y_test)) * 100
-#         r2 = r2_score(y_test, predictions)
-
-#         # Store evaluation metrics
-#         eval_metrics[model_name] = {'MAE': mae, 'MSE': mse, 'RMSE': rmse, 'MAPE': mape, 'R2': r2}
-
-#     # Display evaluation metrics
-#     st.subheader("Evaluation Metrics")
-#     for model_name, metrics in eval_metrics.items():
-#         st.write(f"Evaluation metrics for {model_name}:")
-#         for metric_name, value in metrics.items():
-#             st.write(f"{metric_name}: {value}")
-#         st.write()
-
-#     # Plot evaluation metrics
-#     if eval_metrics:
-#         st.subheader("Evaluation Metric Visualization")
-#         fig, ax = plt.subplots(figsize=(12, 6))
-
-#         metrics = list(eval_metrics.keys())
-#         mae_values = [eval_metrics[model]['MAE'] for model in metrics]  # Corrected access to values
-#         mse_values = [eval_metrics[model]['MSE'] for model in metrics]  # Corrected access to values
-#         rmse_values = [eval_metrics[model]['RMSE'] for model in metrics]  # Corrected access to values
-
-#         bar_width = 0.15  # Increased bar width
-#         index = np.arange(len(metrics))
-
-#         bar1 = ax.bar(index - 2*bar_width, mae_values, bar_width, label='MAE')  # Adjusted positions for bars
-#         bar2 = ax.bar(index - bar_width, mse_values, bar_width, label='MSE')   # Adjusted positions for bars
-#         bar3 = ax.bar(index, rmse_values, bar_width, label='RMSE')              # Adjusted positions for bars
-
-#         ax.set_xlabel('Models')
-#         ax.set_ylabel('Metrics')
-#         ax.set_title(f'Evaluation Metrics for {selected_data.columns[1]} using {chosen_model.upper()} as the Models')
-#         ax.set_xticks(index)
-#         ax.set_xticklabels(metrics)
-#         ax.legend()
-
-#         # Annotate bars with values
-#         for bars in [bar1, bar2, bar3]:
-#             for bar in bars:
-#                 height = bar.get_height()
-#                 ax.annotate('{}'.format(round(height, 2)),
-#                             xy=(bar.get_x() + bar.get_width() / 2, height),
-#                             xytext=(0, 3),  # 3 points vertical offset
-#                             textcoords="offset points",
-#                             ha='center', va='bottom')
-
-#         st.pyplot(fig)
-#     else:
-#         st.write("No models were evaluated.")
-
-
-
-
-# # the third coin models
-
-# def evaluate_models_selected_coin_3(selected_data, chosen_model='all'):
-#     # Making a copy of the slice to ensure it's a separate object
-#     selected_data = selected_data.copy()
-
-#     for lag in range(1, 4):  # Adding lagged features for 1 to 3 days
-#          selected_data.loc[:, f'{selected_data.columns[2]}_lag_{lag}'] = selected_data[selected_data.columns[2]].shift(lag)
-
-#     # Dropping rows with NaN values created due to shifting
-#     selected_data.dropna(inplace=True)
-
-#     # Features will be the lagged values, and the target will be the current price of the first coin
-#     features = [f'{selected_data.columns[2]}_lag_{lag}' for lag in range(1, 4)]
-#     X = selected_data[features]
-#     y = selected_data[selected_data.columns[2]]
-
-#     # Splitting the dataset into training and testing sets
-#     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-
-#     # Initialize dictionary to hold models
-#     models = {
-#         'GRADIENT BOOSTING': GradientBoostingRegressor(),
-#         'SVR': SVR(),
-#         'XGBOOST': XGBRegressor(),
-#         'LSTM': Sequential([LSTM(units=50, input_shape=(X_train.shape[1], 1)), Dense(units=1)])
-#     }
-
-#     eval_metrics = {}
-
-#     if chosen_model.lower() == 'all':
-#         chosen_models = models.keys()
-#     else:
-#         chosen_models = [chosen_model.upper()]  # Capitalize input for case insensitivity
-
-#     for model_name in chosen_models:
-#         if model_name not in models:
-#             print(f"Model '{model_name}' not found. Skipping...")
-#             continue
-
-#         model = models[model_name]
-
-#         if model_name == 'LSTM':
-#             model_filename = "Model_SELECTED_COIN_3//lstm_model.pkl"
-#             if os.path.exists(model_filename):
-#                 model = load_model(model_filename)
-#                 # Reshape the input data for LSTM model
-#                 X_test_array = X_test.to_numpy().reshape(X_test.shape[0], X_test.shape[1], 1)
-#                 predictions = model.predict(X_test_array).flatten()
-#             else:
-#                 print("No pre-trained LSTM model found.")
-#                 continue  # Skip the rest of the loop if LSTM model not found
-#         else:
-#             model.fit(X_train, y_train)  # Fit the model
-#             predictions = model.predict(X_test)
-
-#         # Calculate evaluation metrics
-#         mae = mean_absolute_error(y_test, predictions)
-#         mse = mean_squared_error(y_test, predictions)
-#         rmse = np.sqrt(mse)
-#         mape = np.mean(np.abs((y_test - predictions) / y_test)) * 100
-#         r2 = r2_score(y_test, predictions)
-
-#         # Store evaluation metrics
-#         eval_metrics[model_name] = {'MAE': mae, 'MSE': mse, 'RMSE': rmse, 'MAPE': mape, 'R2': r2}
-
-#     # Display evaluation metrics
-#     st.subheader("Evaluation Metrics")
-#     for model_name, metrics in eval_metrics.items():
-#         st.write(f"Evaluation metrics for {model_name}:")
-#         for metric_name, value in metrics.items():
-#             st.write(f"{metric_name}: {value}")
-#         st.write()
-
-#     # Plot evaluation metrics
-#     if eval_metrics:
-#         st.subheader("Evaluation Metric Visualization")
-#         fig, ax = plt.subplots(figsize=(12, 6))
-
-#         metrics = list(eval_metrics.keys())
-#         mae_values = [eval_metrics[model]['MAE'] for model in metrics]  # Corrected access to values
-#         mse_values = [eval_metrics[model]['MSE'] for model in metrics]  # Corrected access to values
-#         rmse_values = [eval_metrics[model]['RMSE'] for model in metrics]  # Corrected access to values
-
-#         bar_width = 0.15  # Increased bar width
-#         index = np.arange(len(metrics))
-
-#         bar1 = ax.bar(index - 2*bar_width, mae_values, bar_width, label='MAE')  # Adjusted positions for bars
-#         bar2 = ax.bar(index - bar_width, mse_values, bar_width, label='MSE')   # Adjusted positions for bars
-#         bar3 = ax.bar(index, rmse_values, bar_width, label='RMSE')              # Adjusted positions for bars
-
-#         ax.set_xlabel('Models')
-#         ax.set_ylabel('Metrics')
-#         ax.set_title(f'Evaluation Metrics for {selected_data.columns[2]} using {chosen_model.upper()} as the Models')
-#         ax.set_xticks(index)
-#         ax.set_xticklabels(metrics)
-#         ax.legend()
-
-#         # Annotate bars with values
-#         for bars in [bar1, bar2, bar3]:
-#             for bar in bars:
-#                 height = bar.get_height()
-#                 ax.annotate('{}'.format(round(height, 2)),
-#                             xy=(bar.get_x() + bar.get_width() / 2, height),
-#                             xytext=(0, 3),  # 3 points vertical offset
-#                             textcoords="offset points",
-#                             ha='center', va='bottom')
-
-#         st.pyplot(fig)
-#     else:
-#         st.write("No models were evaluated.")
-    
-        
-# # the fourth coin
-
-
-# def evaluate_models_selected_coin_4(selected_data, chosen_model='all'):
-#     # Making a copy of the slice to ensure it's a separate object
-#     selected_data = selected_data.copy()
-
-#     for lag in range(1, 4):  # Adding lagged features for 1 to 3 days
-#          selected_data.loc[:, f'{selected_data.columns[3]}_lag_{lag}'] = selected_data[selected_data.columns[3]].shift(lag)
-
-#     # Dropping rows with NaN values created due to shifting
-#     selected_data.dropna(inplace=True)
-
-#     # Features will be the lagged values, and the target will be the current price of the first coin
-#     features = [f'{selected_data.columns[3]}_lag_{lag}' for lag in range(1, 4)]
-#     X = selected_data[features]
-#     y = selected_data[selected_data.columns[3]]
-
-#     # Splitting the dataset into training and testing sets
-#     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-
-#     # Initialize dictionary to hold models
-#     models = {
-#         'GRADIENT BOOSTING': GradientBoostingRegressor(),
-#         'SVR': SVR(),
-#         'XGBOOST': XGBRegressor(),
-#         'LSTM': Sequential([LSTM(units=50, input_shape=(X_train.shape[1], 1)), Dense(units=1)])
-#     }
-
-#     eval_metrics = {}
-
-#     if chosen_model.lower() == 'all':
-#         chosen_models = models.keys()
-#     else:
-#         chosen_models = [chosen_model.upper()]  # Capitalize input for case insensitivity
-
-#     for model_name in chosen_models:
-#         if model_name not in models:
-#             print(f"Model '{model_name}' not found. Skipping...")
-#             continue
-
-#         model = models[model_name]
-
-#         if model_name == 'LSTM':
-#             model_filename = "Model_SELECTED_COIN_4//lstm_model.pkl"
-#             if os.path.exists(model_filename):
-#                 model = load_model(model_filename)
-#                 # Reshape the input data for LSTM model
-#                 X_test_array = X_test.to_numpy().reshape(X_test.shape[0], X_test.shape[1], 1)
-#                 predictions = model.predict(X_test_array).flatten()
-#             else:
-#                 print("No pre-trained LSTM model found.")
-#                 continue  # Skip the rest of the loop if LSTM model not found
-#         else:
-#             model.fit(X_train, y_train)  # Fit the model
-#             predictions = model.predict(X_test)
-
-#         # Calculate evaluation metrics
-#         mae = mean_absolute_error(y_test, predictions)
-#         mse = mean_squared_error(y_test, predictions)
-#         rmse = np.sqrt(mse)
-#         mape = np.mean(np.abs((y_test - predictions) / y_test)) * 100
-#         r2 = r2_score(y_test, predictions)
-
-#         # Store evaluation metrics
-#         eval_metrics[model_name] = {'MAE': mae, 'MSE': mse, 'RMSE': rmse, 'MAPE': mape, 'R2': r2}
-
-#     # Display evaluation metrics
-#     st.subheader(f"Evaluation Metrics {model_name}")
-#     for model_name, metrics in eval_metrics.items():
-#         st.subheader(f"Evaluation metrics for {model_name}:")
-#         for metric_name, value in metrics.items():
-#             st.write(f"{metric_name}: {value}")
-#         st.write()
-
-#     # Plot evaluation metrics
-#     if eval_metrics:
-#         st.subheader("Evaluation Metric Visualization")
-#         fig, ax = plt.subplots(figsize=(12, 6))
-
-#         metrics = list(eval_metrics.keys())
-#         mae_values = [eval_metrics[model]['MAE'] for model in metrics]  # Corrected access to values
-#         mse_values = [eval_metrics[model]['MSE'] for model in metrics]  # Corrected access to values
-#         rmse_values = [eval_metrics[model]['RMSE'] for model in metrics]  # Corrected access to values
-
-#         bar_width = 0.15  # Increased bar width
-#         index = np.arange(len(metrics))
-
-#         bar1 = ax.bar(index - 2*bar_width, mae_values, bar_width, label='MAE')  # Adjusted positions for bars
-#         bar2 = ax.bar(index - bar_width, mse_values, bar_width, label='MSE')   # Adjusted positions for bars
-#         bar3 = ax.bar(index, rmse_values, bar_width, label='RMSE')              # Adjusted positions for bars
-
-#         ax.set_xlabel('Models')
-#         ax.set_ylabel('Metrics')
-#         ax.set_title(f'Evaluation Metrics for {selected_data.columns[3]} using {chosen_model.upper()} as the Models')
-#         ax.set_xticks(index)
-#         ax.set_xticklabels(metrics)
-#         ax.legend()
-
-#         # Annotate bars with values
-#         for bars in [bar1, bar2, bar3]:
-#             for bar in bars:
-#                 height = bar.get_height()
-#                 ax.annotate('{}'.format(round(height, 2)),
-#                             xy=(bar.get_x() + bar.get_width() / 2, height),
-#                             xytext=(0, 3),  # 3 points vertical offset
-#                             textcoords="offset points",
-#                             ha='center', va='bottom')
-
-#         st.pyplot(fig)
-#     else:
-#         st.write("No models were evaluated.")
-
-# gauja
-
-# # Function to evaluate models for selected coins
-# def evaluate_models_selected_coin(selected_data, column_index, chosen_model='all'):
-#     coin_name = selected_data.columns[column_index] 
-
-#     # Add lagged features for 1 to 3 days
-#     for lag in range(1, 4):
-#         selected_data.loc[:, f'{coin_name}_lag_{lag}'] = selected_data[coin_name].shift(lag)
-
-#     # Drop rows with NaN values created due to shifting
-#     selected_data.dropna(inplace=True)
-
-#     # Features will be the lagged values, and the target will be the current price of the coin
-#     features = [f'{coin_name}_lag_{lag}' for lag in range(1, 4)]
-#     X = selected_data[features]
-#     y = selected_data[coin_name]
-
-#     # Split the dataset into training and testing sets
-#     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-
-#     # Initialize dictionary to hold models
-#     models = {
-#         'GRADIENT BOOSTING': GradientBoostingRegressor(),
-#         'SVR': SVR(),
-#         'XGBOOST': XGBRegressor(),
-#         'LSTM': Sequential([LSTM(units=50, input_shape=(X_train.shape[1], 1)), Dense(units=1)])
-#     }
-
-#     eval_metrics = {}
-
-#     if chosen_model.lower() == 'all':
-#         chosen_models = models.keys()
-#     else:
-#         chosen_models = [chosen_model.upper()]  # Capitalize input for case insensitivity
-
-#     for model_name in chosen_models:
-#         if model_name not in models:
-#             st.warning(f"Model '{model_name}' not found. Skipping...")
-#             continue
-
-#         model = models[model_name]
-
-#         if model_name == 'LSTM':
-#             model_filename = f"Model_SELECTED_COIN_{column_index+1}/lstm_model.pkl"
-#             if os.path.exists(model_filename):
-#                 model = load_model(model_filename)
-#                 # Reshape the input data for LSTM model
-#                 X_test_array = X_test.to_numpy().reshape(X_test.shape[0], X_test.shape[1], 1)
-#                 predictions = model.predict(X_test_array).flatten()
-#             else:
-#                 st.error("No pre-trained LSTM model found.")
-#                 return  # Skip the rest of the loop if LSTM model not found
-#         else:
-#             model.fit(X_train, y_train)  # Fit the model
-#             predictions = model.predict(X_test)
-
-#         # Calculate evaluation metrics
-#         mae = mean_absolute_error(y_test, predictions)
-#         mse = mean_squared_error(y_test, predictions)
-#         rmse = np.sqrt(mse)
-#         mape = np.mean(np.abs((y_test - predictions) / y_test)) * 100
-#         r2 = r2_score(y_test, predictions)
-
-#         # Store evaluation metrics
-#         eval_metrics[model_name] = {'MAE': mae, 'MSE': mse, 'RMSE': rmse, 'MAPE': mape, 'R2': r2}
-
-#     # Display evaluation metrics
-#     st.subheader(f"Evaluation Metrics for {coin_name}:")
-#     for model_name, metrics in eval_metrics.items():
-#         st.write(f"Evaluation metrics for {model_name}:")
-#         for metric_name, value in metrics.items():
-#             st.write(f"{metric_name}: {value}")
-#         st.write('---')
-
-#     # Plot evaluation metrics
-#     if eval_metrics:
-#         st.subheader("Evaluation Metric Visualization")
-#         fig, ax = plt.subplots(figsize=(12, 6))
-
-#         metrics = list(eval_metrics.keys())
-#         mae_values = [eval_metrics[model]['MAE'] for model in metrics]
-#         mse_values = [eval_metrics[model]['MSE'] for model in metrics]
-#         rmse_values = [eval_metrics[model]['RMSE'] for model in metrics]
-
-#         bar_width = 0.15
-#         index = np.arange(len(metrics))
-
-#         bar1 = ax.bar(index - 2*bar_width, mae_values, bar_width, label='MAE')
-#         bar2 = ax.bar(index - bar_width, mse_values, bar_width, label='MSE')
-#         bar3 = ax.bar(index, rmse_values, bar_width, label='RMSE')
-
-#         ax.set_xlabel('Models')
-#         ax.set_ylabel('Metrics')
-#         ax.set_title(f'Evaluation Metrics for {coin_name} using {chosen_model.upper()} as the Models')
-#         ax.set_xticks(index)
-#         ax.set_xticklabels(metrics)
-#         ax.legend()
-
-#         # Annotate bars with values
-#         for bars in [bar1, bar2, bar3]:
-#             for bar in bars:
-#                 height = bar.get_height()
-#                 ax.annotate('{}'.format(round(height, 2)),
-#                             xy=(bar.get_x() + bar.get_width() / 2, height),
-#                             xytext=(0, 3),  # 3 points vertical offset
-#                             textcoords="offset points",
-#                             ha='center', va='bottom')
-
-#         st.pyplot(fig)
-#     else:
-#         st.error("No models were evaluated.")
-
-# def plot_predictions(model, selected_data, X_test, y_test, coin_index):
-#     if model is not None:
-#         coin_name = selected_data.columns[coin_index]  # Get the name of the coin based on index
-        
-#         # User input for frequency and number of periods (weeks, months, or quarters)
-#         frequency = st.selectbox(f"Select frequency for {coin_name}", ['Daily', 'Weekly', 'Monthly', 'Quarterly']).lower()
-#         num_periods = st.number_input(f"Enter the number of periods for {coin_name}", min_value=1, step=1)
-
-#         # Make predictions for the specified number of periods
-#         features = [f'{coin_name}_lag_{lag}' for lag in range(1, 4)]
-#         X_array = selected_data[features].to_numpy()
-#         predictions = model.predict(X_array[-num_periods:])  # Predictions for the last 'num_periods' rows
-
-#         # Get the last date in the dataset
-#         last_date = selected_data.index[-1]
-
-#         # Generate periods for future predictions
-#         if frequency == 'daily':
-#             periods = pd.date_range(start=last_date, periods=num_periods, freq='D')
-#         elif frequency == 'weekly':
-#             periods = pd.date_range(start=last_date, periods=num_periods, freq='W')
-#         elif frequency == 'monthly':
-#             periods = pd.date_range(start=last_date, periods=num_periods, freq='M')
-#         elif frequency == 'quarterly':
-#             periods = pd.date_range(start=last_date, periods=num_periods, freq='Q')
-#         else:
-#             st.error("Invalid frequency. Please choose from 'daily', 'weekly', 'monthly', or 'quarterly'.")
-
-#         # Calculate prediction intervals
-#         predictions_series = pd.Series(predictions, index=periods)
-#         pred_int = sm.tools.eval_measures.prediction_interval(predictions_series)
-
-#         # Plot average prices with confidence intervals
-#         mse = mean_squared_error(y_test[-num_periods:], predictions)
-#         st.write(f"Mean Squared Error for {coin_name}: {mse}")
-
-#         # Creating a time series plot with predicted prices and confidence intervals
-#         st.subheader(f"Predicted Prices and Confidence Intervals for {coin_name} by {frequency}")
-#         plt.figure(figsize=(10, 6))
-#         plt.plot(periods, predictions, label='Predicted Price')
-#         plt.fill_between(pred_int.index, pred_int.iloc[:, 0], pred_int.iloc[:, 1], color='blue', alpha=0.2, label='95% Prediction Interval')
-#         plt.title(f"Predicted Prices for {coin_name} by {frequency}")
-#         plt.xlabel('Date')
-#         plt.ylabel('Price')
-#         plt.legend()
-#         plt.grid(True)
-#         st.pyplot()
-
-
-# # imporimport streamlit as st
-# import numpy as np
-# import matplotlib.pyplot as plt
-# import pandas as pd
-# from sklearn.model_selection import train_test_split
-# from sklearn.ensemble import GradientBoostingRegressor
-# from sklearn.svm import SVR
-# from xgboost import XGBRegressor
-# from keras.models import Sequential, load_model
-# from keras.layers import LSTM, Dense
-# from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
-# import os
-
+# making prediction from the trained and saved models
 # Function to evaluate models for selected coins
 def evaluate_models_selected_coin(selected_data, column_index, chosen_model='all'):
     coin_name = selected_data.columns[column_index] 
@@ -1564,23 +781,7 @@ def evaluate_models_selected_coin(selected_data, column_index, chosen_model='all
     else:
         st.error("No models were evaluated.")
 
-
-
-import streamlit as st
-import numpy as np
-import matplotlib.pyplot as plt
-import pandas as pd
-from sklearn.model_selection import train_test_split
-from sklearn.ensemble import GradientBoostingRegressor
-from sklearn.svm import SVR
-from xgboost import XGBRegressor
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import LSTM, Dense
-from sklearn.metrics import mean_squared_error
-import joblib
-import os
-import tensorflow as tf
-
+# 
 
 def plot_actual_forecast_with_confidence(actual, predictions, periods, upper_bound, lower_bound):
     """
@@ -2067,131 +1268,6 @@ def plot_predictions_4(model, selected_data, X_test, y_test):
 
 
 # predicting Buy and selling
-import pandas as pd
-import numpy as np
-import streamlit as st
-import plotly.graph_objects as go
-from ta.trend import SMAIndicator
-from datetime import datetime, timedelta
-
-# def apply_ma_trading_strategy(selected_data, chosen_coin):
-#     # Drop rows with missing 'Close' prices
-#     selected_data.dropna(subset=[chosen_coin], inplace=True)
-
-#     # Convert index to offset-naive datetime index
-#     selected_data.index = selected_data.index.tz_localize(None)
-
-#     # Calculate moving averages
-#     ma_7 = 7  # 7-day moving average
-#     ma_14 = 14  # 14-day moving average
-#     selected_data[f'MA_{ma_7}'] = SMAIndicator(close=selected_data[chosen_coin], window=ma_7).sma_indicator()
-#     selected_data[f'MA_{ma_14}'] = SMAIndicator(close=selected_data[chosen_coin], window=ma_14).sma_indicator()
-
-#     # Generate buy and sell signals based on moving averages
-#     selected_data['Buy_Signal'] = np.where(selected_data[f'MA_{ma_7}'] > selected_data[f'MA_{ma_14}'].shift(1), 1, 0)
-#     selected_data['Sell_Signal'] = np.where(selected_data[f'MA_{ma_7}'] < selected_data[f'MA_{ma_14}'].shift(1), -1, 0)
-
-#     # Calculate profit/loss based on trading signals
-#     total_profit_loss = calculate_profit_loss(selected_data, chosen_coin)
-
-#     # Create figure with secondary y-axis
-#     fig = go.Figure()
-
-#     # Add traces
-#     fig.add_trace(go.Scatter(x=selected_data.index, y=selected_data[chosen_coin], name='Close Price', line=dict(color='blue')))
-#     fig.add_trace(go.Scatter(x=selected_data.index, y=selected_data[f'MA_{ma_7}'], name=f'{ma_7}-day MA', line=dict(color='green')))
-#     fig.add_trace(go.Scatter(x=selected_data.index, y=selected_data[f'MA_{ma_14}'], name=f'{ma_14}-day MA', line=dict(color='red')))
-#     fig.add_trace(go.Scatter(x=selected_data[selected_data['Buy_Signal'] == 1].index, y=selected_data[selected_data['Buy_Signal'] == 1][chosen_coin],
-#                              mode='markers', marker=dict(color='green', size=10, symbol='triangle-up'), name='Buy Signal'))
-#     fig.add_trace(go.Scatter(x=selected_data[selected_data['Sell_Signal'] == -1].index, y=selected_data[selected_data['Sell_Signal'] == -1][chosen_coin],
-#                              mode='markers', marker=dict(color='red', size=10, symbol='triangle-down'), name='Sell Signal'))
-    
-#     # Current price line
-#     current_price = selected_data[chosen_coin].iloc[-1]
-#     fig.add_trace(go.Scatter(x=[selected_data.index[0], selected_data.index[-1]], y=[current_price, current_price],
-#                              mode='lines', line=dict(color='gray', dash='dash'), name='Current Price'))
-
-#     # Update layout to increase figure size
-#     fig.update_layout(
-#         title=f'Moving Average Trading Strategy for {chosen_coin}',
-#         xaxis_title='Date',
-#         yaxis_title='Price',
-#         legend=dict(yanchor="top", y=0.99, xanchor="left", x=0.01),
-#         width=1000,  # Set the width of the figure
-#         height=600   # Set the height of the figure
-#     )
-
-#     # Display plotly figure using Streamlit
-#     st.plotly_chart(fig)
-
-#     st.write(f"Current Price of {chosen_coin} is {current_price}")
-
-#     return selected_data, total_profit_loss
-
-# def calculate_profit_loss(data, coin):
-#     # Initialize variables
-#     position = 0  # 0: no position, 1: long position, -1: short position
-#     entry_price = 0
-#     profit_loss = []
-
-#     # Iterate over rows
-#     for index, row in data.iterrows():
-#         if row['Buy_Signal'] == 1 and position != 1:  # Buy signal
-#             if position == -1:  # Close short position
-#                 profit_loss.append(entry_price - row[coin])
-#             position = 1  # Enter long position
-#             entry_price = row[coin]
-#         elif row['Sell_Signal'] == -1 and position != -1:  # Sell signal
-#             if position == 1:  # Close long position
-#                 profit_loss.append(row[coin] - entry_price)
-#             position = -1  # Enter short position
-#             entry_price = row[coin]
-
-#     # Close any remaining position at the end
-#     if position == 1:
-#         profit_loss.append(data.iloc[-1][coin] - entry_price)
-#     elif position == -1:
-#         profit_loss.append(entry_price - data.iloc[-1][coin])
-
-#     return sum(profit_loss)
-
-# def forecast_price(selected_data, chosen_coin, num_days):
-#     future_date = datetime.now() + timedelta(days=num_days)
-#     future_date = future_date.replace(tzinfo=None)
-
-#     if future_date > selected_data.index[-1]:
-#         # Extend the index
-#         new_index = pd.date_range(start=selected_data.index[0], end=future_date, freq='D')
-#         extended_data = selected_data.reindex(new_index, method='ffill')
-
-#         # Recalculate MAs for the extended period
-#         extended_data[f'MA_{7}'] = SMAIndicator(close=extended_data[chosen_coin], window=7).sma_indicator()
-#         extended_data[f'MA_{14}'] = SMAIndicator(close=extended_data[chosen_coin], window=14).sma_indicator()
-
-#         # Forecast using the latest MA values
-#         future_price = (extended_data[f'MA_{7}'].iloc[-1] + extended_data[f'MA_{14}'].iloc[-1]) / 2
-#         return future_price, future_date
-#     else:
-#         st.write("Future date is within the available data range.")
-#         return None, None
-
-# def determine_best_time_to_trade_future(selected_data, chosen_coin):
-#     selected_data, total_profit_loss = apply_ma_trading_strategy(selected_data, chosen_coin)
-
-#     num_days = st.number_input("Enter the number of days for forecasting ahead:", min_value=1, step=1)
-#     future_price, future_date = forecast_price(selected_data, chosen_coin, num_days)
-
-#     if future_price is not None:
-#         action = "Buy" if future_price > selected_data[chosen_coin].iloc[-1] else "Sell"
-#         st.write(f"Recommended action: {action}")
-#         st.write(f"Forecasted price for {future_date.date()}: {future_price}")
-#     else:
-#         st.write("Unable to forecast price for the future.")
-
-#     return selected_data, total_profit_loss
-
-
-# trying
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -2289,19 +1365,11 @@ def forecast_price(selected_data, chosen_coin, num_days):
         st.write("Future date is within the available data range.")
         return None, None
 
-# # Main function to run the Streamlit app
-# def main():
-    
-
-# # Run the Streamlit app
-# if __name__ == "__main__":
-#     main()
 
 
 
 
-
-
+# App layout
     
 # Sidebar navigation
 side_bars = st.sidebar.radio("Navigation", ["Home", "About Us", "Dataset","Coin Correlation","Moving Average", "Visualizations","Predictions","NEWS"])
@@ -2384,38 +1452,7 @@ elif side_bars == "Visualizations":
         period_index = st.radio("Select period", period_labels)
         period = period_values[period_labels.index(period_index)]
 
-        plot_candlestick_chart(coin, period)
-#         # User input for coin and period
-#         available_coins = crypto_data['Crypto'].unique()
-#         coin = st.selectbox("Select coin", available_coins)
-#         period = st.radio("Select period", ('D', 'W', 'M'))
-
-#         plot_crypto_chart(coin, period)
-
-
-# #         # User input for visualization
-# #         coin_visualization = st.sidebar.selectbox("Select a coin for visualization:", data['Crypto'].unique(), index=0)
-# #         period_visualization = st.sidebar.selectbox("Select period for visualization:", ['D', 'W', 'M'], index=0)
-
-# #         # Plot the selected cryptocurrency chart
-# #         if st.sidebar.button("Plot Cryptocurrency Chart"):
-# #             plot_candlestick_chart(coin_visualization, period_visualization)
-#         # User input for coin and period
-#         available_coins = data['Crypto'].unique()
-#         coin = st.sidebar.selectbox("Select a coin symbol:", available_coins, index=0)
-#         period = st.sidebar.selectbox("Select a period:", ['Daily', 'Weekly', 'Monthly'], index=0)
-
-#         if period == 'Daily':
-#             period = 'D'
-#         elif period == 'Weekly':
-#             period = 'W'
-#         elif period == 'Monthly':
-#             period = 'M'
-
-#         plot_candlestick_chart(data, coin, period)
-
-
-            
+        plot_candlestick_chart(coin, period)      
     elif visualization_option == 'Market State Visualization':
         visualize_market_state(data)
         
@@ -2519,12 +1556,7 @@ elif side_bars == "Predictions":
             result_data = determine_best_time_to_trade_future(selected_data, chosen_coin, num_days)
             
             st.subheader("Buy/Sell Prediction Data")
-            st.write(result_data)
-
-
-
-
-            
+            st.write(result_data)   
             
 elif side_bars == 'NEWS':
     # Ask the user for the cryptocurrency they want to see news about
