@@ -1344,27 +1344,299 @@ def apply_ma_trading_strategy(selected_data, chosen_coin):
 
     return selected_data
 
-# Function to forecast future price
 def forecast_price(selected_data, chosen_coin, num_days):
     future_date = datetime.now() + timedelta(days=num_days)
-    future_date = future_date.replace(tzinfo=None)
+    future_date = future_date.replace(tzinfo=None)  # Remove timezone information
 
-    if future_date > selected_data.index[-1]:
+    # Convert index datetime to naive datetime
+    index_datetime = selected_data.index[-1].to_pydatetime().replace(tzinfo=None)
+
+    if future_date > index_datetime:
         # Extend the index
-        new_index = pd.date_range(start=selected_data.index[0], end=future_date, freq='D')
+        new_index = pd.date_range(start=selected_data.index[0], periods=len(selected_data) + num_days, freq='D')
         extended_data = selected_data.reindex(new_index, method='ffill')
 
         # Recalculate MAs for the extended period
-        extended_data[f'MA_{7}'] = SMAIndicator(close=extended_data[chosen_coin], window=7).sma_indicator()
-        extended_data[f'MA_{14}'] = SMAIndicator(close=extended_data[chosen_coin], window=14).sma_indicator()
+        ma_7 = 7
+        ma_14 = 14
+        extended_data[f'MA_{ma_7}'] = SMAIndicator(close=extended_data[chosen_coin], window=ma_7).sma_indicator()
+        extended_data[f'MA_{ma_14}'] = SMAIndicator(close=extended_data[chosen_coin], window=ma_14).sma_indicator()
 
         # Forecast using the latest MA values
-        future_price = (extended_data[f'MA_{7}'].iloc[-1] + extended_data[f'MA_{14}'].iloc[-1]) / 2
+        future_price = (extended_data[f'MA_{ma_7}'].iloc[-1] + extended_data[f'MA_{ma_14}'].iloc[-1]) / 2
         return future_price, future_date
     else:
         st.write("Future date is within the available data range.")
         return None, None
 
+
+
+
+
+# ML on trading strategy
+
+import streamlit as st
+import pandas as pd
+import numpy as np
+from ta.trend import SMAIndicator
+import joblib
+import os
+from datetime import datetime, timedelta
+from sklearn.svm import SVR
+from sklearn.ensemble import GradientBoostingRegressor
+from xgboost import XGBRegressor
+from tensorflow.keras.models import load_model
+
+# Function to apply MA Trading Strategy and display chart
+def apply_ma_trading_strategy(selected_data, chosen_coin):
+    # Drop rows with missing 'Close' prices
+    selected_data.dropna(subset=[chosen_coin], inplace=True)
+
+    # Calculate moving averages
+    ma_7 = 7
+    ma_14 = 14
+    selected_data[f'MA_{ma_7}'] = SMAIndicator(close=selected_data[chosen_coin], window=ma_7).sma_indicator()
+    selected_data[f'MA_{ma_14}'] = SMAIndicator(close=selected_data[chosen_coin], window=ma_14).sma_indicator()
+
+    # Generate buy and sell signals based on moving averages
+    selected_data['Buy_Signal'] = np.where(selected_data[f'MA_{ma_7}'] > selected_data[f'MA_{ma_14}'].shift(1), 1, 0)
+    selected_data['Sell_Signal'] = np.where(selected_data[f'MA_{ma_7}'] < selected_data[f'MA_{ma_14}'].shift(1), -1, 0)
+
+    # Display plotly figure
+    fig = go.Figure()
+
+    # Add traces
+    fig.add_trace(go.Scatter(x=selected_data.index, y=selected_data[chosen_coin], name='Close Price', line=dict(color='blue')))
+    fig.add_trace(go.Scatter(x=selected_data.index, y=selected_data[f'MA_{ma_7}'], name=f'{ma_7}-day MA', line=dict(color='green')))
+    fig.add_trace(go.Scatter(x=selected_data.index, y=selected_data[f'MA_{ma_14}'], name=f'{ma_14}-day MA', line=dict(color='red')))
+    fig.add_trace(go.Scatter(x=selected_data[selected_data['Buy_Signal'] == 1].index, y=selected_data[selected_data['Buy_Signal'] == 1][chosen_coin],
+                             mode='markers', marker=dict(color='green', size=10, symbol='triangle-up'), name='Buy Signal'))
+    fig.add_trace(go.Scatter(x=selected_data[selected_data['Sell_Signal'] == -1].index, y=selected_data[selected_data['Sell_Signal'] == -1][chosen_coin],
+                             mode='markers', marker=dict(color='red', size=10, symbol='triangle-down'), name='Sell Signal'))
+    
+    # Current price line
+    current_price = selected_data[chosen_coin].iloc[-1]
+    fig.add_trace(go.Scatter(x=[selected_data.index[0], selected_data.index[-1]], y=[current_price, current_price],
+                             mode='lines', line=dict(color='gray', dash='dash'), name='Current Price'))
+
+    # Update layout
+    fig.update_layout(
+        title=f'Moving Average Trading Strategy for {chosen_coin}',
+        xaxis_title='Date',
+        yaxis_title='Price',
+        legend=dict(yanchor="top", y=0.99, xanchor="left", x=0.01),
+        width=1000,
+        height=600
+    )
+
+    # Display plotly figure
+    st.plotly_chart(fig)
+
+    st.write(f"Current Price of {chosen_coin} is {current_price}")
+
+    return selected_data
+
+# Function to forecast future price using the SVR model
+def forecast_price_svr(selected_data, chosen_coin, num_days):
+    coin_index = selected_data.columns.get_loc(chosen_coin) + 1
+    model_filename = f"Model_SELECTED_COIN_{coin_index}/svr_model.pkl"
+    if not os.path.exists(model_filename):
+        st.write(f"No pre-trained SVR model found for {chosen_coin}.")
+        return None, None
+
+    # Load the SVR model
+    model = joblib.load(model_filename)
+
+    # Prepare input data for prediction
+    features = [f'{chosen_coin}_lag_{lag}' for lag in range(1, 4)]
+    X_array = selected_data[features].to_numpy()
+    X_today = X_array[-1].reshape(1, -1)
+
+    # Predict future price using the SVR model
+    future_price = model.predict(X_today)[0]
+    future_date = datetime.now() + timedelta(days=num_days)
+
+    return future_price, future_date
+
+# Function to forecast future price using the GBR model
+def forecast_price_gbr(selected_data, chosen_coin, num_days):
+    coin_index = selected_data.columns.get_loc(chosen_coin) + 1
+    model_filename = f"Model_SELECTED_COIN_{coin_index}/gradient_boosting_model.pkl"
+    if not os.path.exists(model_filename):
+        st.write(f"No pre-trained GBR model found for {chosen_coin}.")
+        return None, None
+
+    # Load the GBR model
+    model = joblib.load(model_filename)
+
+    # Prepare input data for prediction
+    features = [f'{chosen_coin}_lag_{lag}' for lag in range(1, 4)]
+    X_array = selected_data[features].to_numpy()
+    X_today = X_array[-1].reshape(1, -1)
+
+    # Predict future price using the GBR model
+    future_price = model.predict(X_today)[0]
+    future_date = datetime.now() + timedelta(days=num_days)
+
+    return future_price, future_date
+
+# Function to forecast future price using the XGBoost model
+def forecast_price_xgboost(selected_data, chosen_coin, num_days):
+    coin_index = selected_data.columns.get_loc(chosen_coin) + 1
+    model_filename = f"Model_SELECTED_COIN_{coin_index}/xgboost_model.pkl"
+    if not os.path.exists(model_filename):
+        st.write(f"No pre-trained XGBoost model found for {chosen_coin}.")
+        return None, None
+
+    # Load the XGBoost model
+    model = joblib.load(model_filename)
+
+    # Prepare input data for prediction
+    features = [f'{chosen_coin}_lag_{lag}' for lag in range(1, 4)]
+    X_array = selected_data[features].to_numpy()
+    X_today = X_array[-1].reshape(1, -1)
+
+    # Predict future price using the XGBoost model
+    future_price = model.predict(X_today)[0]
+    future_date = datetime.now() + timedelta(days=num_days)
+
+    return future_price, future_date
+
+# Function to forecast future price using the LSTM model
+def forecast_price_lstm(selected_data, chosen_coin, num_days):
+    coin_index = selected_data.columns.get_loc(chosen_coin) + 1
+    model_filename = f"Model_SELECTED_COIN_{coin_index}/lstm_model.hpkl"
+    if not os.path.exists(model_filename):
+        st.write(f"No pre-trained LSTM model found for {chosen_coin}.")
+        return None, None
+
+    # Load the LSTM model
+    model = load_model(model_filename)
+
+    # Prepare input data for prediction
+    features = [f'{chosen_coin}_lag_{lag}' for lag in range(1, 4)]
+    X_array = selected_data[features].to_numpy()
+    X_today = X_array[-1].reshape(1, 3, 1)  # LSTM expects input shape (batch_size, timesteps, input_dim)
+
+    # Predict future price using the LSTM model
+    future_price = model.predict(X_today)[0][0]
+    future_date = datetime.now() + timedelta(days=num_days)
+
+    return future_price, future_date
+
+# Function to determine the best time to trade based on model predictions
+def determine_best_time_to_trade(selected_data, chosen_coin, num_days, model):
+    if model == "SVR":
+        total_profit_loss = apply_ma_trading_strategy(selected_data, chosen_coin)
+        future_price, future_date = forecast_price_svr(selected_data, chosen_coin, num_days)
+    elif model == "GBR":
+        total_profit_loss = apply_ma_trading_strategy(selected_data, chosen_coin)
+        future_price, future_date = forecast_price_gbr(selected_data, chosen_coin, num_days)
+    elif model == "XGBoost":
+        total_profit_loss = apply_ma_trading_strategy(selected_data, chosen_coin)
+        future_price, future_date = forecast_price_xgboost(selected_data, chosen_coin, num_days)
+    elif model == "LSTM":
+        total_profit_loss = apply_ma_trading_strategy(selected_data, chosen_coin)
+        future_price, future_date = forecast_price_lstm(selected_data, chosen_coin, num_days)
+    else:
+        st.write("Invalid model selection.")
+        return None
+
+    if future_price is not None:
+        action = "Buy" if future_price > selected_data[chosen_coin].iloc[-1] else "Sell"
+        st.write(f"Recommended action for {chosen_coin}: {action}")
+        st.write(f"Forecasted price for {future_date.date()}: {future_price}")
+    else:
+        st.write(f"Unable to forecast price for {chosen_coin} in the future.")
+
+    return total_profit_loss
+
+
+# prediction coin based on profit and num of days
+# import os
+# import joblib
+# import numpy as np
+# import pandas as pd
+# import streamlit as st
+
+import os
+import joblib
+import numpy as np
+import pandas as pd
+import streamlit as st
+
+def find_best_coins(selected_data_path):
+    # Load selected data
+    selected_data = pd.read_csv(selected_data_path, index_col="Date")
+
+    # Extract coins from column names
+    coins = selected_data.columns[:]  # Assuming the first column is not a coin name
+
+    # Define model folders
+    model_folders = {
+        "xgboost": "XGB_models",
+        "gradient_bossting": "GBR_models",
+        "lstm": "LSTM_models",
+        "svr": "SVR_models"
+    }
+
+    # Collect user input for model type
+    model_type = st.selectbox("Select the model type:", list(model_folders.keys()))
+
+    # Load the saved models for the selected model type
+    models = {}
+    for i, coin in enumerate(coins, start=1):
+        model_folder = model_folders[model_type]
+        model_file = os.path.join(model_folder, f"{model_type.lower()}_model_{i}.pkl")
+        models[coin] = joblib.load(model_file)
+
+    # Collect user input for profit and number of days
+    desired_profit = st.number_input("Enter the desired profit amount:")
+    num_days = st.number_input("Enter the number of days:", value=1, step=1)
+
+    # Initialize variables to track the closest and next best coins and profits
+    closest_coin = None
+    closest_profit = None
+    next_best_coin = None
+    next_best_profit = None
+
+    # Iterate through the coins
+    for coin, model in models.items():
+        # Reshape the input data to match the shape of the training data
+        input_data = np.array([[num_days, 0, 0]])  # Assuming the second and third features are placeholders
+        # Predict the price change for the specified number of days
+        price_change = model.predict(input_data)[0]
+        # Calculate the potential profit
+        potential_profit = price_change * desired_profit
+        
+        # Update closest and next best coins and profits
+        if closest_coin is None or abs(potential_profit - desired_profit) < abs(closest_profit - desired_profit):
+            next_best_coin = closest_coin
+            next_best_profit = closest_profit
+            closest_coin = coin
+            closest_profit = potential_profit
+        elif next_best_coin is None or abs(potential_profit - desired_profit) < abs(next_best_profit - desired_profit):
+            next_best_coin = coin
+            next_best_profit = potential_profit
+
+    
+    # # Display the closest and next best coins and their potential profits
+    # st.subheader("Results:")
+    # st.write(f"The closest coin to yield the desired profit of {desired_profit} in {num_days} days is: {closest_coin}")
+    # st.write(f"The potential profit for {closest_coin} is: {closest_profit}")
+    # st.write(f"The next best coin is: {next_best_coin}")
+    # st.write(f"The potential profit for {next_best_coin} is: {next_best_profit}")
+    
+    # Display the closest and next best coins and their potential profits
+    st.subheader("Results:")
+    if closest_coin:
+        st.write(f"The closest coin to yield the desired profit of {desired_profit} GBP in {num_days} days is: {closest_coin}")
+        st.write(f"The potential profit for {closest_coin} is: {closest_profit}")
+    else:
+        st.write("No results found for the given parameters.")
+    if next_best_coin:
+        st.write(f"The next best coin is: {next_best_coin}")
+        st.write(f"The potential profit for {next_best_coin} is: {next_best_profit}")
 
 
 
@@ -1413,6 +1685,9 @@ elif side_bars == "Coin Correlation":
 
 
 elif side_bars == "Moving Average":
+    st.header(Moving Average Analysis)
+    st.write("Interpretation:\n1.**Short MA:** Provides insights into short-term price trends.\n2. **Medium MA:** Offers indications of intermediate-term price movements.\ 3' **Long MA:** Helps identify long-term trends in the cryptocurrency market.
+")
     plot_moving_average(data)
 elif side_bars == "Visualizations":
     st.title("Welcome to the World of Data Visualisation for Crypto Data")
@@ -1460,7 +1735,7 @@ elif side_bars == "Visualizations":
         predicted_highs, predicted_lows = predict_highs_lows(data)
         
 elif side_bars == "Predictions":
-    prediction_selection = st.sidebar.radio('Selection:', ["Dataset", "Training Model Metrics", "Prediction Graphs","Buy and Sell Prediction"])
+    prediction_selection = st.sidebar.radio('Selection:', ["Dataset", "Training Model Metrics", "Prediction Graphs","Buy and Sell Prediction","Predict coin by Profit"])
     st.header("Prediction of Cryptocurrency Price")
     if prediction_selection == "Dataset":
         st.subheader("About the Prediction Data")
@@ -1480,6 +1755,10 @@ elif side_bars == "Predictions":
         st.title("Coin Scatter Plot")
         plot_coin_scatter(selected_data)
     elif prediction_selection == "Training Model Metrics":
+        st.write("### Model Selection:/n Choose a machine learning model from the sidebar and enter the required parameters.")
+
+        st.subheader("Available Models: ")
+        st.write("1.**Support Vector Regression (SVR)**\n2. **Gradient Boosting Regression (GBR)**\n3. **XGBoost**\n4. **Long Short-Term Memory (LSTM)**")
         # Load the selected data from a CSV file
         selected_data = pd.read_csv("Selected_coins.csv", index_col='Date')
         # Streamlit app
@@ -1540,24 +1819,71 @@ elif side_bars == "Predictions":
             st.write("Click the button above to display the visualization of the prediction of the selected coin.")
     
     elif prediction_selection == "Buy and Sell Prediction":
-        st.title("Moving Average Trading Strategy")
-
-        # Load data
-        selected_data = pd.read_csv("Selected_coins.csv", parse_dates=['Date'], index_col='Date')
-
-        # Sidebar for selecting coin and input for number of days
         
-        chosen_coin = st.sidebar.selectbox("Choose the coins you want to evaluate:", selected_data.columns)
-        num_days = st.sidebar.number_input("Enter the number of days for forecasting ahead:", min_value=1, step=1)
+        buy_and_sell = st.sidebar.radio("Selection: ",["Moving Averages","Models"])
+        if buy_and_sell == "Moving Averages":
+            st.title('Crypto Trading Advisor')
+            st.title("Using Moving Average Trading Strategy")
+            
+            st.write("Here, you can explore predictive models that aim to forecast optimal times to buy and sell assets in financial markets.")
+            # Explanation of Buy/Sell Signal
+            st.subheader("Explanation of Buy/Sell Signal:")
+            st.write("**Buy Signal**: Indicators or conditions suggesting it may be a good time to purchase an asset, "
+                     "anticipating its price will increase.")
+            st.write("**Sell Signal**: Indicators or conditions suggesting it may be a good time to sell an asset, "
+                     "anticipating its price will decrease.")
 
-        # Button to apply MA Trading Strategy
-        if st.sidebar.button("Apply MA Trading Strategy"):
-            # Call function to apply MA Trading Strategy and display chart
-            result_data = determine_best_time_to_trade_future(selected_data, chosen_coin, num_days)
-            
-            st.subheader("Buy/Sell Prediction Data")
-            st.write(result_data)   
-            
+            # Sidebar for selecting coin and input for number of days
+
+            chosen_coin = st.sidebar.selectbox("Choose the coins you want to evaluate:", selected_data.columns)
+            num_days = st.sidebar.number_input("Enter the number of days for forecasting ahead:", min_value=1, step=1)
+
+            # Button to apply MA Trading Strategy
+            if st.sidebar.button("Apply MA Trading Strategy"):
+                # Call function to apply MA Trading Strategy and display chart
+                result_data = determine_best_time_to_trade_future(selected_data, chosen_coin, num_days)
+
+                st.subheader("Buy/Sell Prediction Data")
+                st.write(result_data)   
+        elif buy_and_sell == "Models":
+            # Load data
+            selected_data = pd.read_csv("Selected_coins.csv", index_col='Date')
+
+            # Streamlit app
+            st.title("Crypto Trading Analysis")
+
+            # Sidebar - Model selection and user input
+            model_selection = st.sidebar.radio("Select Model", ("Support Vector Regression (SVR)", "Gradient Boosting Regression (GBR)", "XGBoost", "LSTM"))
+            chosen_coin = st.sidebar.text_input("Enter the coin you want to analyze:")
+            num_days = st.sidebar.number_input("Enter the number of days for forecasting:", min_value=1, value=10)
+            # Generate lagged features for each coin
+            for coin_column in selected_data.columns[:]:
+                for lag in range(1, 4):
+                    selected_data[f'{coin_column}_lag_{lag}'] = selected_data[coin_column].shift(lag)
+
+            if st.button("Run Analysis"):
+                if model_selection == "Support Vector Regression (SVR)":
+                    determine_best_time_to_trade(selected_data, chosen_coin, num_days, "SVR")
+                elif model_selection == "Gradient Boosting Regression (GBR)":
+                    determine_best_time_to_trade(selected_data, chosen_coin, num_days, "GBR")
+                elif model_selection == "XGBoost":
+                    determine_best_time_to_trade(selected_data, chosen_coin, num_days, "XGBoost")
+                elif model_selection == "LSTM":
+                    determine_best_time_to_trade(selected_data, chosen_coin, num_days, "LSTM")
+    elif prediction_selection == "Predict coin by Profit":
+        st.title("Profit Prediction Tool")
+        st.header("How it Works")
+        st.write("""
+        1. **Select Model Type**: Choose the type of model you want to use for prediction. You can choose from XGBoost, Gradient Boosting, LSTM, or SVR.
+
+        2. **Enter Parameters**: Input the desired profit amount and the number of days you're willing to wait for the profit.
+
+        3. **Get Results**: The tool will analyze the data and provide you with the closest coin to reach your desired profit within the specified time frame. It will also suggest the next best coin for investment.
+        """)
+        selected_data_path = "Selected_coins.csv"
+        find_best_coins(selected_data_path)
+
+
 elif side_bars == 'NEWS':
     # Ask the user for the cryptocurrency they want to see news about
     chosen_crypto = st.text_input("Enter the cryptocurrency you want to see news about:", "Bitcoin").strip().upper()
