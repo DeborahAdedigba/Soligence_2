@@ -25,6 +25,7 @@ from sklearn.linear_model import LinearRegression
 from sklearn.impute import SimpleImputer
 import tensorflow as tf
 import itertools
+from scipy.stats import gaussian_kde
   
 
 # Load cryptocurrency price data
@@ -232,37 +233,90 @@ def plot_average_price_trend(data, interval):
 
 
 
-# def plot_boxplot(data, coin):
-#     """
-#     Plot a boxplot of the High, Low, Open, Close, and Volume for a selected coin.
+# volume volatility
+def plot_crypto_volatility():
+    st.title("Cryptocurrency Volume Volatility")
+    
+    # Load the cryptocurrency data
+    crypto_data = pd.read_csv("Cleaned_combined_crypto_data.csv")
+    crypto_data['Date'] = pd.to_datetime(crypto_data['Date'])  # Ensure 'Date' is a datetime object
+    crypto_data.set_index('Date', inplace=True)  # Set 'Date' as the index
+    
+    # Create a selection box for the cryptocurrencies
+    available_coins = crypto_data['Crypto'].unique()
+    selected_coins = st.multiselect("Select the cryptocurrencies you want to analyze:", options=available_coins, default=available_coins[:2])
 
-#     Parameters:
-#     - data (pd.DataFrame): DataFrame containing cryptocurrency data.
-#     - coin (str): The cryptocurrency symbol (coin name) to plot.
-#     """
-#     # Filter data for the selected coin
-#     coin_data = data[data['Crypto'] == coin]
+    if selected_coins:
+        # Filter data for selected cryptocurrencies
+        filtered_data = crypto_data[crypto_data['Crypto'].isin(selected_coins)]
+        
+        # Plotting volume volatility (moving standard deviation of volume) for each selected coin
+        window_size = 7  # Define the window size for rolling calculation
+        fig = go.Figure(layout_title_text="Volume Volatility Over Time", layout_xaxis_title="Date", layout_yaxis_title="Volume Volatility (Standard Deviation)")
 
-#     # Extract columns for boxplot
-#     boxplot_data = [coin_data['Low'], coin_data['Close'], coin_data['Open'], coin_data['High']]
+        for coin in selected_coins:
+            # Calculate rolling standard deviation of volume
+            coin_data = filtered_data[filtered_data['Crypto'] == coin]['Volume'].rolling(window=window_size).std()
+            fig.add_trace(go.Scatter(x=coin_data.index, y=coin_data, mode='lines', name=coin))
 
-#     # Plot boxplot
-#     plt.figure(figsize=(10, 6))
-#     plt.boxplot(boxplot_data, patch_artist=True, notch=True, vert=True, showfliers=True)
-#     plt.title(f"Boxplot of High, Low, Open, Close for {coin}")
-#     plt.xlabel("Metrics")
-#     plt.ylabel("Price")
-#     plt.xticks([1, 2, 3, 4], ['Low', 'Close', 'Open', 'High'])
+        st.plotly_chart(fig)
+        
+# distribution
 
-#     # Show plot
-#     plt.grid(True)
-#     plt.tight_layout()
-#     st.pyplot(plt)
-import plotly.graph_objects as go
+# Function to plot distribution and trend line for selected coin
+def plot_distribution_and_trend(selected_coin):
+    # Filter data for selected coin
+    selected_data = combined_data[combined_data['Crypto'] == selected_coin]
+    
+    # Create histogram with Plotly
+    fig = go.Figure()
 
-import streamlit as st
-import plotly.graph_objects as go
+    # Add histogram trace
+    fig.add_trace(go.Histogram(x=selected_data['Close'], nbinsx=30,
+                               histnorm='probability density', marker_color='skyblue',
+                               opacity=0.7, name='Histogram'))
 
+    # Calculate KDE for trend line
+    kde = gaussian_kde(selected_data['Close'], bw_method=0.2)
+    kde_x = np.linspace(selected_data['Close'].min(), selected_data['Close'].max(), 100)
+    kde_y = kde.evaluate(kde_x)
+
+    # Add KDE as trend line
+    fig.add_trace(go.Scatter(x=kde_x, y=kde_y, mode='lines', 
+                             name='Trend Line', line=dict(color='orange')))
+
+    # Customize layout
+    fig.update_layout(title=f'Distribution of Close Prices for {selected_coin}',
+                      xaxis_title='Close Price', yaxis_title='Probability Density')
+
+    # Show the plot
+    st.plotly_chart(fig)
+
+# Plot daily price change
+
+# Function to plot daily price changes for selected coin
+def plot_daily_price_changes(selected_coin):
+    # Filter data for selected coin
+    selected_data = combined_data[combined_data['Crypto'] == selected_coin]
+    
+    # Calculate daily price changes
+    selected_data['Price Change'] = selected_data['Close'].diff()
+    
+    # Plot daily price changes
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=selected_data.index, y=selected_data['Price Change'], 
+                             mode='lines', name='Price Change', line=dict(color='blue')))
+    
+    # Customize layout
+    fig.update_layout(title=f'Daily Price Changes for {selected_coin}',
+                      xaxis_title='Date', yaxis_title='Price Change',
+                      width=800, height=500)
+    
+    # Show the plot
+    st.plotly_chart(fig)
+
+
+# boxplot for coins
 def plot_boxplot(data, selected_coin):
     """
     Plot a boxplot of the High, Low, Open, Close, and Volume for a selected coin.
@@ -870,20 +924,41 @@ def evaluate_models_selected_coin(selected_data, column_index, chosen_model='all
 
 # prediction graphs
 
+
+import streamlit as st
+import plotly.graph_objects as go
+
 def plot_actual_forecast_with_confidence(actual, predictions, periods, upper_bound, lower_bound):
     """
-    Plot actual prices and forecasted prices with confidence intervals.
+    Plot actual prices and forecasted prices with confidence intervals using Plotly.
     """
-    plt.figure(figsize=(10, 6))
-    plt.plot(periods, actual, label='Actual Price', color='g')
-    plt.plot(periods, predictions, label='Forecasted Price', color='r')
-    plt.fill_between(periods, lower_bound, upper_bound, color='b', alpha=0.2, label='95% Confidence Interval')
-    plt.title("Actual and Forecasted Prices with Confidence Intervals")
-    plt.xlabel('Date')
-    plt.ylabel('Price')
-    plt.legend()
-    plt.grid(True)
-    st.pyplot(plt)
+    # Create figure
+    fig = go.Figure()
+
+    # Add actual prices trace
+    fig.add_trace(go.Scatter(x=periods, y=actual, mode='lines', name='Actual Price', line=dict(color='green')))
+
+    # Add forecasted prices trace
+    fig.add_trace(go.Scatter(x=periods, y=predictions, mode='lines', name='Forecasted Price', line=dict(color='red')))
+
+    # Add confidence interval
+    fig.add_trace(go.Scatter(x=periods, y=upper_bound, mode='lines', name='Upper Bound', fill=None,
+                             line=dict(color='blue', width=0)))
+    fig.add_trace(go.Scatter(x=periods, y=lower_bound, mode='lines', name='Lower Bound',
+                             fill='tonexty', line=dict(color='blue')))
+
+    # Update layout
+    fig.update_layout(title="Actual and Forecasted Prices with Confidence Intervals",
+                      xaxis_title='Date',
+                      yaxis_title='Price',
+                      legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+                      plot_bgcolor='rgba(0,0,0,0)',
+                      showlegend=True,
+                      template='plotly_white')
+
+    # Display figure within Streamlit
+    st.plotly_chart(fig)
+
 
 # Function to evaluate models and plot predictions for each coin
 def evaluate_and_plot_model(selected_data, coin_index, model_choice):
@@ -1410,7 +1485,7 @@ elif side_bars == "Dataset":
         dataset()
     elif Selection == 'Visualization of Data':
         st.title("Visualization of Dataset")
-        Vis= st.sidebar.radio("Selection",["Plot Average Price Trend","BoxPlot"])
+        Vis= st.sidebar.radio("Selection",["Plot Average Price Trend","BoxPlot", 'Volume Volatility', 'Distribution of each coin','Daily Price Change'])
         
         if Vis == "Plot Average Price Trend":
             st.title('Plot Average Price Trend')
@@ -1430,8 +1505,20 @@ elif side_bars == "Dataset":
             if st.sidebar.button("Plot BoxPlot"):
                 # plot_boxplot(data, selected_coin)
                 plot_boxplot(combined_data, selected_coin)
-        
-        
+        elif Vis == 'Volume Volatility':
+             plot_crypto_volatility()
+        elif Vis == 'Distribution of each coin':
+            # Sidebar selection box for cryptocurrencies
+            selected_coin = st.sidebar.selectbox('Select a cryptocurrency:', combined_data['Crypto'].unique())
+
+            # Plot distribution and trend line for selected coin
+            plot_distribution_and_trend(selected_coin)
+        elif Vis == 'Daily Price Change':
+            # Sidebar selection box for cryptocurrencies
+            selected_coin = st.sidebar.selectbox('Select a cryptocurrency:', combined_data['Crypto'].unique())
+
+            # Plot daily price changes for selected coin
+            plot_daily_price_changes(selected_coin)
 elif side_bars == "Coin Correlation":
 
     # Pivot the data
