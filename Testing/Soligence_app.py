@@ -26,11 +26,19 @@ from sklearn.impute import SimpleImputer
 import tensorflow as tf
 import itertools
 from scipy.stats import gaussian_kde
-  
+import tensorflow as tf
+from training import train_and_save_models
+import warnings
+
+warnings.filterwarnings("ignore", category=UserWarning)
 
 # Load cryptocurrency price data
-data = pd.read_csv('Cleaned_combined_crypto_data.csv')
-selected_data = pd.read_csv("Selected_coins.csv", index_col='Date')
+# data = pd.read_csv('Cleaned_combined_crypto_data.csv')
+# selected_data = pd.read_csv("Selected_coins.csv", index_col='Date')
+
+
+
+
 
 # building functions for use in the app
 # home page
@@ -96,7 +104,6 @@ def about_us():
         "predictions could face risks if market conditions change unexpectedly.")
 
     
-# dataset page    
 # getting the real-time data
 import streamlit as st
 import pandas as pd
@@ -118,7 +125,7 @@ ticker_symbols = ['BTC-GBP', 'ETH-GBP', 'USDT-GBP', 'BNB-GBP', 'SOL-GBP', 'XRP-G
 
 # Define start and end dates for data retrieval (two years ago from today)
 end_date = datetime.now()
-start_date = end_date - timedelta(days=2*365)  # Two years ago
+start_date = end_date - timedelta(days=4*365)  # four /Two years ago
 
 # Fetch data for each cryptocurrency and combine into a single DataFrame
 combined_data = pd.DataFrame()
@@ -134,8 +141,9 @@ combined_data.drop(['Dividends', 'Stock Splits'], axis=1, inplace=True)
 # Save the combined data to a CSV file
 combined_data.to_csv("Cleaned_combined_crypto_data.csv")
 
-
+# dataset page
 def dataset():
+    get_crypto_data(ticker, start_date, end_date)
     
     st.header("Crypto Dataset of 30 Coins")
     
@@ -147,9 +155,12 @@ def dataset():
     ascending = st.sidebar.checkbox("Ascending")
     sorted_data = combined_data.sort_values(by=sort_column, ascending=ascending)
 
-    # Filtering
-    selected_crypto = st.sidebar.selectbox("Filter by cryptocurrency:", combined_data['Crypto'].unique())
-    sorted_data = sorted_data[sorted_data['Crypto'].isin([selected_crypto])]
+#    # Filtering
+    selected_crypto = st.sidebar.selectbox("Filter by cryptocurrency:", ['All'] + list(combined_data['Crypto'].unique()))
+    if selected_crypto == 'All':
+        sorted_data = combined_data
+    else:
+        sorted_data = sorted_data[sorted_data['Crypto'] == selected_crypto]
 
     # Pagination
     page_size = st.sidebar.number_input("Items per page:", min_value=1, value=10)
@@ -171,55 +182,104 @@ def dataset():
         st.table(paginated_data)
 
 
+# # trying
+# def dataset():
+#     get_crypto_data(ticker, start_date, end_date)
+    
+#     st.header("Crypto Dataset of 30 Coins")
+    
+#     # Sidebar options
+#     st.sidebar.subheader("Dataset Options")
+    
+#     # Sorting
+#     sort_column = st.sidebar.multiselect("Sort by:", data.columns)
+#     sort_order = st.sidebar.radio("Sort order:", ["Ascending", "Descending"], index=1)
+#     ascending = (sort_order == "Ascending")
+    
+#     if sort_column:
+#         if 'Crypto' in sort_column:  # Custom sorting for Crypto column
+#             sorted_data = combined_data.sort_values(by='Crypto', ascending=ascending)
+#         else:
+#             sorted_data = combined_data.sort_values(by=sort_column, ascending=ascending)
+#     else:
+#         # Handle the case when sort_column is empty by setting a default sorting column
+#         default_sort_column = 'Date'  # Choose a default column for sorting
+#         sorted_data = combined_data.sort_values(by=default_sort_column, ascending=ascending)
+
+#     # Filtering
+#     selected_crypto = st.sidebar.selectbox("Filter by cryptocurrency:", ['All'] + list(combined_data['Crypto'].unique()))
+#     if selected_crypto == 'All':
+#         sorted_data = combined_data
+#     else:
+#         sorted_data = sorted_data[sorted_data['Crypto'] == selected_crypto]
+
+#     # Pagination
+#     page_size = st.sidebar.number_input("Items per page:", min_value=1, value=10)
+#     page_number = st.sidebar.number_input("Page number:", min_value=1, value=1)
+#     start_idx = (page_number - 1) * page_size
+#     end_idx = start_idx + page_size
+#     paginated_data = sorted_data.iloc[start_idx:end_idx]
+
+#     # Display the dataset using a dataframe
+#     st.subheader("Dataset Overview")
+#     st.dataframe(paginated_data)
+    
+#     # Provide an option to show a table view
+#     show_table = st.checkbox("Show as Table")
+    
+#     # Display the dataset as a table if the checkbox is selected
+#     if show_table:
+#         st.subheader("Dataset Table View")
+#         st.table(paginated_data)
+
 
 
 
 
 # plotting the average price trend    
-def plot_average_price_trend(data, interval):
+# Function to plot the average price trend
+def plot_average_price_trend(data, selected_coin, interval):
     """
-    Plot the average price trend of cryptocurrencies based on the specified interval.
+    Plot the average price trend of the selected cryptocurrency based on the specified interval.
 
     Parameters:
-    - crypto_data (pd.DataFrame): DataFrame containing cryptocurrency data with 'Date' as index and 'Close' prices as columns.
-    - interval (str): Interval for resampling the data ('D' for daily, 'W' for weekly, 'M' for monthly).
+    - data (pd.DataFrame): DataFrame containing cryptocurrency data with 'Date' as index and 'Close' prices as columns.
+    - selected_coin (str): Name of the selected cryptocurrency.
+    - interval (str): Interval for resampling the data ('Daily', 'Weekly', 'Monthly').
     """
+    # Filter the data for the selected cryptocurrency
+    selected_coin_data = data[data['Crypto'] == selected_coin]
+
+    # Check if data for the selected cryptocurrency exists
+    if selected_coin_data.empty:
+        st.error("No data available for the selected cryptocurrency.")
+        return
+
     # Set 'Date' column as index
-    # data['Date'] = pd.to_datetime(data['Date'])
-    # data.set_index('Date', inplace=True)
+    selected_coin_data.index = pd.to_datetime(selected_coin_data.index)
 
     # Resample the data based on the specified interval and calculate the mean
     if interval == 'Daily':
-        resampled_data = data['Close']
+        resampled_data = selected_coin_data['Close']
         interval_label = 'Daily'
     elif interval == 'Weekly':
-        resampled_data = data['Close'].resample('W').mean()
+        resampled_data = selected_coin_data['Close'].resample('W').mean()
         interval_label = 'Weekly'
     elif interval == 'Monthly':
-        resampled_data = data['Close'].resample('M').mean()
+        resampled_data = selected_coin_data['Close'].resample('M').mean()
         interval_label = 'Monthly'
     else:
-        st.error("Invalid interval. Please choose either 'D' for daily, 'W' for weekly, or 'M' for monthly.")
+        st.error("Invalid interval. Please choose either 'Daily', 'Weekly', or 'Monthly'.")
         return
 
     # Plot the trend using date index and average price
     plt.figure(figsize=(10, 6))
-    plt.plot(resampled_data.index, resampled_data, color='blue', marker='o', linestyle='-')
+    plt.plot(resampled_data.index.date, resampled_data, color='blue', marker='o', linestyle='-')  # Use only the date part for x-axis
 
     # Adding labels and title
     plt.xlabel('Date', fontsize=14)
     plt.ylabel('Average Price', fontsize=14)
-    plt.title(f'Average {interval_label} Cryptocurrency Price Trend', fontsize=16)
-
-    # Set x-axis date format
-    if interval == 'M':
-        plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m'))
-    else:
-        plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d'))
-        if interval == 'W':
-            plt.gca().xaxis.set_major_locator(mdates.WeekdayLocator())
-        elif interval == 'D':
-            plt.gca().xaxis.set_major_locator(mdates.DayLocator())
+    plt.title(f'Average {interval_label} Price Trend for {selected_coin}', fontsize=16)
 
     # Rotate x-axis labels for better readability
     plt.xticks(rotation=45, ha='right')
@@ -230,6 +290,7 @@ def plot_average_price_trend(data, interval):
     # Show plot
     plt.tight_layout()
     st.pyplot(plt)
+
 
 
 
@@ -293,7 +354,6 @@ def plot_distribution_and_trend(selected_coin):
     st.plotly_chart(fig)
 
 # Plot daily price change
-
 # Function to plot daily price changes for selected coin
 def plot_daily_price_changes(selected_coin):
     # Filter data for selected coin
@@ -348,6 +408,47 @@ def plot_boxplot(data, selected_coin):
 
     # Show plot using Streamlit's plotly_chart function
     st.plotly_chart(fig)
+
+# price volume movement
+def visualize_crypto_data(combined_data):
+    # Load the crypto data
+    # crypto_data = pd.read_csv(combined_data)
+
+    # Get the list of unique coins from the 'Crypto' column
+    unique_coins = combined_data['Crypto'].unique()
+
+    # Prompt user to enter the coin name
+    selected_coin = st.selectbox("Select the cryptocurrencies you want to analyze:", unique_coins)
+
+    # Check if the entered coin name is valid
+    if selected_coin not in unique_coins:
+        st.write("Invalid coin name. Please select a valid coin.")
+        st.stop()
+
+    # Filter the data for the selected coin
+    selected_coin_data = combined_data[combined_data['Crypto'] == selected_coin]
+
+    # Create figure
+    fig = go.Figure()
+
+    # Add trace for Close prices on the right y-axis
+    fig.add_trace(go.Scatter(x=selected_coin_data.index, y=selected_coin_data['Close'], mode='lines', name='Close', line=dict(color='orange'), yaxis='y2'))
+
+    # Add trace for trading volume on the left y-axis
+    fig.add_trace(go.Scatter(x=selected_coin_data.index, y=selected_coin_data['Volume'], fill='tozeroy', name='Volume', line=dict(color='gray', width=0), fillcolor='rgba(128, 128, 128, 0.3)'))
+
+    # Update layout
+    fig.update_layout(
+        title=f'Close Price and Volume Movement Over Time for {selected_coin}',
+        xaxis=dict(title='Date'),
+        yaxis=dict(title='Volume', side='left', showgrid=False),
+        yaxis2=dict(title='Price', side='right', overlaying='y', showgrid=False),
+        legend=dict(x=0, y=1, traceorder="normal"),
+    )
+
+    # Show the plot
+    st.plotly_chart(fig)
+
 
 
  
@@ -434,7 +535,7 @@ def plot_moving_average(crypto_data):
     window_title = f'{window}-day MA'
 
     # Plotting
-    st.write(f"Price Chart for {coin_selected} with {window_title}")
+    st.subheader(f"Price Chart for {coin_selected} with {window_title}")
     plt.figure(figsize=(10, 6))
     plt.plot(selected_data.index, selected_data['Close'], label=f'{coin_selected} Price')
     plt.plot(selected_data.index, selected_data['MA'], label=window_title)
@@ -497,16 +598,6 @@ def plot_crypto_metrics(data, coin, metrics, start_date, end_date):
 # second Coins
 
 def plot_crypto_coins(data, coins, metric, start_date, end_date):
-    """
-    Plots cryptocurrency coins for specified metric within a date range.
-
-    Parameters:
-    - crypto_data (pd.DataFrame): DataFrame containing cryptocurrency data with 'Date' as index and coin names as columns.
-    - coins (list): List of cryptocurrency symbols.
-    - metric (str): Price metric to plot.
-    - start_date (str): Start date of the interval in 'YYYY-MM-DD' format.
-    - end_date (str): End date of the interval in 'YYYY-MM-DD' format.
-    """
     # Ensure 'Date' column is in datetime format and set it as the index
     if 'Date' in data.columns:
         data['Date'] = pd.to_datetime(data['Date'])
@@ -581,15 +672,6 @@ def plot_candlestick_chart(coin='BTC-GBP', period='D'):
 # visualizing market state
 
 def visualize_market_state(data):
-    """
-    Predicts the market state (up or down) for a group of chosen cryptocurrencies.
-
-    Parameters:
-    - crypto_data (pd.DataFrame): DataFrame containing the cryptocurrency data with date as index.
-
-    Returns:
-    - market_state (pd.Series): Series indicating the market state for each day.
-    """
 
     # User input for selecting cryptocurrencies
     st.sidebar.title("Market State Prediction")
@@ -633,16 +715,7 @@ def visualize_market_state(data):
     
 
 def predict_highs_lows(data):
-    """
-    Predicts possible highs and lows of a chosen cryptocurrency.
-
-    Parameters:
-    - data (pd.DataFrame): DataFrame containing the cryptocurrency data.
-
-    Returns:
-    - predicted_highs (pd.DataFrame): DataFrame indicating possible highs.
-    - predicted_lows (pd.DataFrame): DataFrame indicating possible lows.
-    """
+   
     # Extract available coins from the data
     available_coins = data['Crypto'].unique()
 
@@ -661,7 +734,7 @@ def predict_highs_lows(data):
     predicted_lows = selected_data['Close'] < low_threshold
 
     # Visualize predicted highs and lows
-    st.subheader(f'Predicted Highs and Lows for {coin_selected}')
+    st.title(f'Predicted Highs and Lows for {coin_selected}')
     plt.figure(figsize=(10, 6))
     plt.plot(selected_data.index, selected_data['Close'], label='Close Price')
     plt.scatter(selected_data.index[predicted_highs], selected_data['Close'][predicted_highs], color='red', label='Predicted Highs')
@@ -678,55 +751,19 @@ def predict_highs_lows(data):
 
     return predicted_highs_df, predicted_lows_df
     
-# getting crypto news by scrapping        
-
-def get_top_crypto_news(crypto, num_stories=5):
-    # URL of the RSS feed from Cryptoslate
-    cryptoslate_feed_url = 'https://cryptoslate.com/feed/'
-
-    # Parse the RSS feed from Cryptoslate
-    cryptoslate_feed = feedparser.parse(cryptoslate_feed_url)
-
-    # Filter news stories based on the chosen cryptocurrency from Cryptoslate
-    crypto_news_cryptoslate = [entry for entry in cryptoslate_feed.entries if crypto.lower() in entry.title.lower()]
-
-    # URL of the RSS feed from CoinDesk
-    coindesk_feed_url = 'https://feeds.feedburner.com/CoinDesk'
-
-    # Parse the RSS feed from CoinDesk
-    coindesk_feed = feedparser.parse(coindesk_feed_url)
-
-    # Filter news stories based on the chosen cryptocurrency from CoinDesk
-    crypto_news_coindesk = [entry for entry in coindesk_feed.entries if crypto.lower() in entry.title.lower()]
-
-    # Combine news stories from both sources
-    crypto_news_combined = crypto_news_cryptoslate + crypto_news_coindesk
-
-    # Sort combined news stories by date
-    crypto_news_combined.sort(key=lambda x: x.published_parsed, reverse=True)
-
-    # Display the top news stories
-    if crypto_news_combined:
-        st.write(f"Top {num_stories} news stories about {crypto}:")
-        for i, entry in enumerate(crypto_news_combined[:num_stories], start=1):
-            st.write(f"{i}. [{entry.title}]({entry.link})")
-    else:
-        st.write(f"No news found for {crypto}.")
 
 
 # generating the four coins from through pca and clustering
-
-def generate_selected_data():
-    # Assuming 'crypto_data' is loaded and formatted correctly
-    crypto_data = pd.read_csv("Cleaned_combined_crypto_data.csv", index_col="Date", parse_dates=True)
+def generate_selected_data(combined_data):
     
     # Pivot and preprocess the data
-    pivoted_data = crypto_data.pivot(columns='Crypto', values='Close')
-    pivoted_data.fillna(0, inplace=True)
+    pivoted_data = combined_data.pivot(columns='Crypto', values='Close')
+    pivoted_data_filled = pivoted_data.fillna(0)  # Create a new DataFrame without modifying the original
 
     # Standardize the data
     scaler = StandardScaler()
-    scaled_data = scaler.fit_transform(pivoted_data)
+    scaled_data = scaler.fit_transform(pivoted_data_filled)
+
 
     # Perform PCA with a reasonable number of components
     pca = PCA(n_components=10)  # Adjusted for example, consider your variance ratio to decide
@@ -755,12 +792,29 @@ def generate_selected_data():
     # Extract the selected coins based on the index of representative_coins
     selected_data = pivoted_data[representative_coins.index]
 
-    # Save the selected data to a CSV file
-    selected_data.to_csv("Selected_coins.csv")
-
     return selected_data
-selected_data = generate_selected_data()  
+selected_data = generate_selected_data(combined_data)
+selected_data.to_csv('Selected_coins.csv', index=True)
 
+
+    
+# @st.cache(ignore_hash=True)
+# # Function to train models in the background when the app starts
+def train_models_background(selected_data):
+    st.write("Training models in the background...")
+    # Your training code here
+    st.session_state.models_trained = True
+    st.write("Training completed.")
+
+# Check if training has already been done
+if 'models_trained' not in st.session_state:
+    train_models_background(selected_data)  
+
+    
+
+    
+    
+    
 # boxplot for the four selected coins
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
@@ -811,9 +865,27 @@ def plot_coin_scatter(selected_data):
 
 
 # making prediction from the trained and saved models
+# # Function to evaluate models for selected coins
+import os
+import pickle
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import GradientBoostingRegressor
+from sklearn.svm import SVR
+from xgboost import XGBRegressor
+from keras.models import Sequential
+from keras.layers import LSTM, Dense
+from keras.models import load_model
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+
+# Load the selected data from a CSV file
+# selected_data = pd.read_csv("Selected_coins.csv", index_col='Date')
+
 # Function to evaluate models for selected coins
 def evaluate_models_selected_coin(selected_data, column_index, chosen_model='all'):
-    coin_name = selected_data.columns[column_index] 
+    coin_name = selected_data.columns[column_index]
 
     # Add lagged features for 1 to 3 days
     for lag in range(1, 4):
@@ -853,7 +925,7 @@ def evaluate_models_selected_coin(selected_data, column_index, chosen_model='all
         model = models[model_name]
 
         if model_name == 'LSTM':
-            model_filename = f"Model_SELECTED_COIN_{column_index+1}/lstm_model.pkl"
+            model_filename = f"Model_SELECTED_COIN_{column_index+1}/lstm_model.h5"
             if os.path.exists(model_filename):
                 model = load_model(model_filename)
                 # Reshape the input data for LSTM model
@@ -863,8 +935,17 @@ def evaluate_models_selected_coin(selected_data, column_index, chosen_model='all
                 st.error("No pre-trained LSTM model found.")
                 return  # Skip the rest of the loop if LSTM model not found
         else:
-            model.fit(X_train, y_train)  # Fit the model
-            predictions = model.predict(X_test)
+            # Load pre-saved model using pickle
+            model_filename = f"Model_SELECTED_COIN_{column_index+1}/{model_name.lower().replace(' ', '_')}_model.pkl"
+
+            if os.path.exists(model_filename):
+                with open(model_filename, 'rb') as f:
+                    loaded_model = pickle.load(f)  # Use a different variable name
+            else:
+                st.error(f"No pre-trained {model_name} model found.")
+                return  # Skip the rest of the loop if the model not found
+
+            predictions = loaded_model.predict(X_test)
 
         # Calculate evaluation metrics
         mae = mean_absolute_error(y_test, predictions)
@@ -921,6 +1002,7 @@ def evaluate_models_selected_coin(selected_data, column_index, chosen_model='all
         st.pyplot(fig)
     else:
         st.error("No models were evaluated.")
+
 
 # prediction graphs
 
@@ -982,7 +1064,7 @@ def evaluate_and_plot_model(selected_data, coin_index, model_choice):
     models = {
         'GBR': GradientBoostingRegressor(),
         'SVR': SVR(),
-        'XGB': XGBRegressor(),  # Alias for XGBoost
+        'XGB': XGBRegressor(), 
         'LSTM': Sequential([LSTM(units=50, input_shape=(X_train.shape[1], 1)), Dense(units=1)])
     }
 
@@ -1000,7 +1082,7 @@ def evaluate_and_plot_model(selected_data, coin_index, model_choice):
         if model_choice != 'LSTM':
             model.fit(X_train, y_train)
     elif model_choice == 'LSTM':
-        model_filename = f"Model_SELECTED_COIN_{coin_index + 1}/lstm_model.pkl"
+        model_filename = f"Model_SELECTED_COIN_{coin_index + 1}/lstm_model.h5"
         if os.path.exists(model_filename):
             model = tf.keras.models.load_model(model_filename)
             # Reshape the input data for LSTM model
@@ -1010,7 +1092,7 @@ def evaluate_and_plot_model(selected_data, coin_index, model_choice):
             print("No pre-trained LSTM model found.")
             return None, None, None, None
     else:
-        print("Invalid model choice. Please choose from SVR, XGB, GBR, or LSTM.")
+        print("Invalid model choice. Please choose from SVR, XGBoost, Gradient Boosting, or LSTM.")
         return None, None, None, None
 
     # Make predictions for the specified number of periods
@@ -1052,7 +1134,6 @@ def evaluate_and_plot_model(selected_data, coin_index, model_choice):
     # Plot the time series plot with averages and confidence intervals using Streamlit's plotting functions
     st.subheader(f"Predicted Prices and Confidence Intervals for {coin_name} by {frequency}")
     plot_actual_forecast_with_confidence(y_test[-num_periods:], predictions, periods, upper_bound, lower_bound)
-
 
 
 
@@ -1282,7 +1363,7 @@ def forecast_price_xgboost(selected_data, chosen_coin, num_days):
 # Function to forecast future price using the LSTM model
 def forecast_price_lstm(selected_data, chosen_coin, num_days):
     coin_index = selected_data.columns.get_loc(chosen_coin) + 1
-    model_filename = f"Model_SELECTED_COIN_{coin_index}/lstm_model.pkl"
+    model_filename = f"Model_SELECTED_COIN_{coin_index}/lstm_model.h5"
     if not os.path.exists(model_filename):
         st.write(f"No pre-trained LSTM model found for {chosen_coin}.")
         return None, None
@@ -1329,18 +1410,19 @@ def determine_best_time_to_trade(selected_data, chosen_coin, num_days, model):
     return total_profit_loss
 
 
+
+
+
 # prediction coin based on profit and num of days
 import tensorflow as tf
 
 def find_best_coins(selected_data_path):
     # Load selected data
-    selected_data = pd.read_csv(selected_data_path, index_col="Date")
+    # selected_data = pd.read_csv(selected_data_path, index_col="Date")
 
     # Extract coins from column names
     coins = selected_data.columns[:]  # Assuming the first column is not a coin name
 
-    # Collect user input for model type
-    model_type = st.selectbox("Select the model type:", ['Gradient_Boosting', 'SVR', 'Xgboost', 'LSTM'])
 
     # Load the saved models for the selected model type and each coin
     models = {}
@@ -1356,9 +1438,6 @@ def find_best_coins(selected_data_path):
             st.error(f"No pre-trained model found for {coin} and {model_type}.")
             continue
 
-    # Collect user input for profit and number of days
-    desired_profit = st.number_input("Enter the desired profit amount:")
-    num_days = st.number_input("Enter the number of days:", value=1, step=1)
 
     # Initialize variables to track the closest and next best coins and profits
     closest_coin = None
@@ -1390,18 +1469,66 @@ def find_best_coins(selected_data_path):
             next_best_profit = potential_profit
     
     # Display the closest and next best coins and their potential profits
+    # Display the closest and next best coins and their potential profits
     st.subheader("Results:")
     if closest_coin:
+        closest_profit_value = closest_profit[0] if isinstance(closest_profit, np.ndarray) else closest_profit
         st.write(f"The closest coin to yield the desired profit of {desired_profit} GBP in {num_days} days is: {closest_coin}")
-        st.write(f"The potential profit for {closest_coin} is: {closest_profit}")
+        st.write(f"The potential profit for {closest_coin} is: {closest_profit_value}")
     else:
         st.write("No results found for the given parameters.")
     if next_best_coin:
+        next_best_profit_value = next_best_profit[0] if isinstance(next_best_profit, np.ndarray) else next_best_profit
         st.write(f"The next best coin is: {next_best_coin}")
-        st.write(f"The potential profit for {next_best_coin} is: {next_best_profit}")
+        st.write(f"The potential profit for {next_best_coin} is: {next_best_profit_value}")
+
+        
+# getting crypto news by scrapping        
+
+def get_top_crypto_news(crypto, num_stories=5, news_source='all'):
+    if news_source == 'all' or news_source == 'Cryptoslate':
+        # URL of the RSS feed from Cryptoslate
+        cryptoslate_feed_url = 'https://cryptoslate.com/feed/'
+
+        # Parse the RSS feed from Cryptoslate
+        cryptoslate_feed = feedparser.parse(cryptoslate_feed_url)
+
+        # Filter news stories based on the chosen cryptocurrency from Cryptoslate
+        crypto_news_cryptoslate = [entry for entry in cryptoslate_feed.entries if crypto.lower() in entry.title.lower()]
+
+        # Display Cryptoslate news stories
+        if crypto_news_cryptoslate:
+            st.write(f"Top {num_stories} Cryptoslate news stories about {crypto}:")
+            for i, entry in enumerate(crypto_news_cryptoslate[:num_stories], start=1):
+                st.write(f"{i}. [{entry.title}]({entry.link}) - {entry.published}")
+        else:
+            st.write(f"No Cryptoslate news found for {crypto}.")
+
+    if news_source == 'all' or news_source == 'CoinDesk':
+        # URL of the RSS feed from CoinDesk
+        coindesk_feed_url = 'https://feeds.feedburner.com/CoinDesk'
+
+        # Parse the RSS feed from CoinDesk
+        coindesk_feed = feedparser.parse(coindesk_feed_url)
+
+        # Filter news stories based on the chosen cryptocurrency from CoinDesk
+        crypto_news_coindesk = [entry for entry in coindesk_feed.entries if crypto.lower() in entry.title.lower()]
+
+        # Display CoinDesk news stories
+        if crypto_news_coindesk:
+            st.write(f"Top {num_stories} CoinDesk news stories about {crypto}:")
+            for i, entry in enumerate(crypto_news_coindesk[:num_stories], start=1):
+                st.write(f"{i}. [{entry.title}]({entry.link}) - {entry.published}")
+        else:
+            st.write(f"No CoinDesk news found for {crypto}.")
 
 
 
+
+
+
+
+        
 # App layout
 # Use st.markdown() to add custom CSS for background color
 st.markdown("""
@@ -1479,22 +1606,28 @@ elif side_bars == "Dataset":
     """)
     st.write('Link: https://finance.yahoo.com/topic/stock-market-news')
     # Display a success message
-    st.success("Data saved to Cleaned_combined_crypto_data.csv")
+    
     Selection = st.sidebar.radio("Selection",['Dataset','Visualization of Data'])
     if Selection == 'Dataset':
         dataset()
+        st.success("Data saved to Cleaned_combined_crypto_data.csv")
     elif Selection == 'Visualization of Data':
         st.title("Visualization of Dataset")
-        Vis= st.sidebar.radio("Selection",["Plot Average Price Trend","BoxPlot", 'Volume Volatility', 'Distribution of each coin','Daily Price Change'])
+        Vis= st.sidebar.radio("Selection",["Plot Average Price Trend","BoxPlot", 'Volume Volatility', 'Distribution of each coin','Daily Price Change','Crypto Price Volume Movement'])
         
         if Vis == "Plot Average Price Trend":
             st.title('Plot Average Price Trend')
             st.write("Visualize the average price trend of cryptocurrencies over different intervals.")
-            interval = st.sidebar.radio("Select Interval:", ['Daily', 'Weekly', 'Monthly'])
+            # Unique coins
+            unique_coins = combined_data['Crypto'].unique()
+
+            # Sidebar - Select cryptocurrency and interval
+            selected_coin = st.sidebar.selectbox('Select Cryptocurrency', unique_coins)
+            interval = st.sidebar.selectbox('Select Interval', ['Daily', 'Weekly', 'Monthly'])
 
             # Plot the selected average price trend
             if st.sidebar.button("Plot Average Price Trend"):
-                plot_average_price_trend(combined_data, interval)
+                plot_average_price_trend(combined_data, selected_coin, interval)
         elif Vis == "BoxPlot":
             st.title("BoxPlot for each Coin")
             st.write("Visualize the distribution of prices for a specific cryptocurrency using boxplot.")
@@ -1519,6 +1652,9 @@ elif side_bars == "Dataset":
 
             # Plot daily price changes for selected coin
             plot_daily_price_changes(selected_coin)
+        elif Vis == 'Crypto Price Volume Movement':
+            # Example usage
+            visualize_crypto_data(combined_data)
 elif side_bars == "Coin Correlation":
 
     # Pivot the data
@@ -1534,6 +1670,8 @@ elif side_bars == "Moving Average":
     st.write("Interpretation: \n" )
     st.write("1. **Short MA:** Provides insights into short-term price trends. \n 2. **Medium MA:** Offers indications of intermediate-term price movements. \n 3. **Long MA:** Helps identify long-term trends in the cryptocurrency market.")
     plot_moving_average(combined_data)
+    
+
 elif side_bars == "Visualizations":
     # Visualization section
     visualization_option = st.sidebar.radio("Select Visualization:", ['Home','Price Comparison', 'Candlestick Chart','Market State Visualization',"Predicted Highs and Lows"])
@@ -1580,6 +1718,7 @@ elif side_bars == "Visualizations":
 
 
     elif visualization_option == 'Candlestick Chart':
+        st.title("Candlestick Chart for Close Price and Volume of Coins")
         crypto_data = pd.read_csv("Cleaned_combined_crypto_data.csv", index_col='Date')
         # User input for coin and period
         available_coins = crypto_data['Crypto'].unique()
@@ -1591,6 +1730,7 @@ elif side_bars == "Visualizations":
 
         plot_candlestick_chart(coin, period)      
     elif visualization_option == 'Market State Visualization':
+        st.title("Market State Visualization for Coins")
         visualize_market_state(combined_data)
         
     elif visualization_option == "Predicted Highs and Lows":
@@ -1603,14 +1743,14 @@ elif side_bars == "Predictions":
         st.subheader("About the Prediction Data")
         st.write("The prediction data is from performing PCA to reduce dimensionality of the data with n_component of 10 and clustering the data with K-means into four clusters and selecting the best from each cluster using the centroid (You can visualize the selected data below)")
         # Display selected data
-        if selected_data is not None:
-            if st.button("Display Selected Data"):
-                st.dataframe(selected_data)
-                # plot_coin_scatter(selected_data)
-            else:
-                st.write("Click the button above to display the selected data.")
+        # if selected_data is not None:
+        if st.button("Display Selected Data"):
+            st.dataframe(selected_data)
+            # plot_coin_scatter(selected_data)
         else:
-            st.write("Selected data is not available. Please check the file path and data format.")
+            st.write("Click the button above to display the selected data.")
+        # else:
+        #     st.write("Selected data is not available. Please check the file path and data format.")
         st.write("Here you can make prediction and visualize forecast for the selected coins using one or all of the available models:\n 1. SVR\n 2. XGBoost\n 3. Gradient Boosting\n 4. LSTM")
         display_selected(selected_data)
         
@@ -1623,7 +1763,7 @@ elif side_bars == "Predictions":
         st.subheader("Available Models: ")
         st.write("1. **Support Vector Regression (SVR)** \n 2. **Gradient Boosting Regression (GBR)** \n 3. **XGBoost** \n 4. **Long Short-Term Memory (LSTM)**")
         # Load the selected data from a CSV file
-        selected_data = pd.read_csv("Selected_coins.csv", index_col='Date')
+        # selected_data = pd.read_csv("Selected_coins.csv", index_col='Date')
         # Streamlit app
         st.title("Model Evaluation for Selected Coins")
         # Select the coins to evaluate
@@ -1639,9 +1779,6 @@ elif side_bars == "Predictions":
         st.title('Cryptocurrency Price Prediction')
         st.write("This page allows you to predict the price of one of the four selected coins using one of the available models. You can choose the frequency of the predictions (daily, weekly, monthly, or quarterly) and specify the number of periods for which you want to make predictions.\n")
         st.write("A table will be displayed showing the predicted prices for the chosen coin over the specified periods.Additionally, a chart will be generated to visualize the predicted prices compared to the actual prices. This chart provides an easy-to-understand visual representation of the accuracy of the predictions.")
-
-        # Read data
-        selected_data = pd.read_csv("Selected_coins.csv", index_col='Date')
 
         # Select coin for prediction
         selected_coin = st.selectbox('Select a coin for prediction:', selected_data.columns.tolist())
@@ -1712,6 +1849,7 @@ elif side_bars == "Predictions":
                     determine_best_time_to_trade(selected_data, chosen_coin, num_days, "XGBoost")
                 elif model_selection == "LSTM":
                     determine_best_time_to_trade(selected_data, chosen_coin, num_days, "LSTM")
+          
     elif prediction_selection == "Predict coin by Profit":
         st.title("Profit Prediction Tool")
         st.header("How it Works")
@@ -1722,27 +1860,45 @@ elif side_bars == "Predictions":
 
         3. **Get Results**: The tool will analyze the data and provide you with the closest coin to reach your desired profit within the specified time frame. It will also suggest the next best coin for investment.
         """)
-        selected_data_path = "Selected_coins.csv"
-        find_best_coins(selected_data_path)
-
+        # selected_data_path = "Selected_coins.csv"
+        # Collect user input for model type
+        model_type = st.selectbox("Select the model type:", ['Gradient_Boosting', 'SVR', 'Xgboost', 'LSTM'])
+        # Collect user input for profit and number of days
+        desired_profit = st.number_input("Enter the desired profit amount:")
+        num_days = st.number_input("Enter the number of days:", value=1, step=1)
+        
+        if st.button('Predict Profit'):
+            find_best_coins(selected_data)
 
 elif side_bars == 'NEWS':
     st.header("Crypto News")
     st.write("Utilize the search feature to find specific news articles by keywords or topics of interest related to Cryptocurrency. Click on the headline of an article to read the full story.")
     st.subheader("Stay Informed")
     
-    # Ask the user for the cryptocurrency they want to see news about
-    chosen_crypto = st.text_input("Enter the cryptocurrency you want to see news about:", "Bitcoin").strip().upper()
+    crypto = st.text_input("Enter cryptocurrency:", "Bitcoin")
+    news_source = st.selectbox("Select news source:", ['all', 'Cryptoslate', 'CoinDesk'])
 
-    # Fetch and display the top cryptocurrency news stories
-    get_top_crypto_news(chosen_crypto)
+    # Display top crypto news
+    get_top_crypto_news(crypto, news_source=news_source)
+
+
+    
+
+    # chosen_crypto = st.text_input("Enter the cryptocurrency you want to see news about:", "Bitcoin").strip().upper()
+    # news_source = st.selectbox("Select the news source:", ['All', 'Cryptoslate', 'Yahoo Finance', 'Coindesk'])
+    # get_top_crypto_news(chosen_crypto, num_stories=5, news_source=news_source)
+    
+
+    
+#     # Ask the user for the cryptocurrency they want to see news about
+#     chosen_crypto = st.text_input("Enter the cryptocurrency you want to see news about:", "Bitcoin").strip().upper()
+
+#     # Fetch and display the top cryptocurrency news stories
+#     get_top_crypto_news(chosen_crypto)
 
 
 
-# elif side_bars == "Predictions":
-#     predictions()
-# elif side_bars == "NEWS":
-#     news()
+
 # # SOLiGence - Solent Intelligence
 
 # Welcome to SOLiGence, a leading financial multinational organization specializing in stock and shares, savings, and investments.
