@@ -25,7 +25,7 @@ The SOLiGence Intelligent Coin Trading (IST) platform is an innovative system th
 
 1. Clone this repository:
    ```
-   git clone https://github.com/yDeborahAdedigba//Soligence_2.git
+   git clone https://github.com/yDeborahAdedigba//Soligence_App.git
    ```
 2. Navigate to the project directory:
    ```
