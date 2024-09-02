@@ -77,12 +77,9 @@ Contributions to the SOLiGence IST platform are welcome. Please feel free to sub
 
 ## License
 
-[Include your chosen license here]
+GNU GENERAL PUBLIC LICENSE
 
 ## Contact
 
-For any queries regarding this project, please contact [Your Name] at [Your Email].
+For any queries regarding this project, please contact Deborah Adedigba at debbydawn16@gmail.com.
 
-## Acknowledgements
-
-This project was developed as part of the Applied AI in Business course (COM 724) at Solent University.
