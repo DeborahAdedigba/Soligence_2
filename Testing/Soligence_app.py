@@ -1577,7 +1577,7 @@ elif side_bars == "Visualizations":
     visualization_option = st.sidebar.radio("Select Visualization:", ['Home','Price Comparison', 'Candlestick Chart','Market State Visualization',"Predicted Highs and Lows"])
     if visualization_option == 'Home':
         st.title("Welcome to the World of Data Visualisation for Crypto Data")
-        st.image('newplot.png', use_column_width=True)
+        st.image('C:/Users/adedi/OneDrive - Solent University/Semester_2/Soligence_2/Testing/newplot.png', use_column_width=True)
         st.write("Welcome to the Visualization Page! Explore different visualizations to gain insights into cryptocurrency markets.")
         st.write("Main Sections:")
         st.write("- **Price Comparison:** Compare the prices of multiple cryptocurrencies over a specific time period.")
