@@ -700,7 +700,8 @@ def generate_selected_data(combined_data):
         center = kmeans.cluster_centers_[i]
         cluster['distance_to_center'] = cluster.apply(lambda x: np.linalg.norm(x[:-1] - center), axis=1)
         # Append the coin with the minimum distance to the center
-        representative_coins = representative_coins.append(cluster.loc[cluster['distance_to_center'].idxmin()])
+        representative_coins = pd.concat([representative_coins, cluster.loc[[cluster['distance_to_center'].idxmin()]]])
+
 
     # Extract the selected coins based on the index of representative_coins
     selected_data = pivoted_data[representative_coins.index]
