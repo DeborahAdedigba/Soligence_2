@@ -1,0 +1,15 @@
+pandas
+numpy
+streamlit
+plotly
+ta
+scikit-learn
+xgboost
+keras
+tensorflow
+joblib
+mplfinance
+feedparser
+matplotlib
+yfinance
+scipy
